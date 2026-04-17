@@ -24,7 +24,8 @@ const SHEETS = {
   TOKENS: 'TOKENS',
   SETTINGS: 'SETTINGS',
   ACTIVITY: 'ACTIVITY',
-  TRANSACTIONS: 'TRANSACTIONS'
+  TRANSACTIONS: 'TRANSACTIONS',
+  PAGES: 'PAGES'
 };
 
 const HEADERS = {
@@ -33,7 +34,8 @@ const HEADERS = {
   TOKENS: ['token','type','email','role','expires_at','status','created_at'],
   SETTINGS: ['key','value'],
   ACTIVITY: ['activity_id','actor_type','name','email','action','status','device_type','device_id','payment_ref','details','created_at'],
-  TRANSACTIONS: ['tx_id','name','email','payment_ref','status','source','device_type','device_id','attempted_at','submitted_at','verified_at','verified_by','notes']
+  TRANSACTIONS: ['tx_id','name','email','payment_ref','status','source','device_type','device_id','attempted_at','submitted_at','verified_at','verified_by','notes'],
+  PAGES: ['page_id','title','slug','sort_order','status','drive_file_id','source_file_name','created_by','created_at','updated_at','is_deleted']
 };
 
 const DEFAULT_REMOTE_VERSIONS = {
@@ -115,8 +117,14 @@ function executeAction_(payload) {
 
     admin_update_display: () => adminUpdateDisplay_(payload),
     admin_update_version_sources: () => adminUpdateVersionSources_(payload),
+    admin_save_custom_page: () => adminSaveCustomPage_(payload),
+    admin_delete_custom_page: () => adminDeleteCustomPage_(payload),
+    admin_get_custom_page: () => adminGetCustomPage_(payload),
+    user_list_pages: () => userListPages_(payload),
+    user_get_page: () => userGetPage_(payload),
 
-    admin_logout: () => logoutToken_(payload)
+    admin_logout: () => logoutToken_(payload),
+    user_logout: () => logoutToken_(payload)
   };
 
   if (!routes[action]) throw new Error('Unknown action: ' + action);
@@ -150,6 +158,7 @@ function setupSystem() {
   getOrCreateSheet_(ss, SHEETS.TOKENS, HEADERS.TOKENS);
   getOrCreateSheet_(ss, SHEETS.ACTIVITY, HEADERS.ACTIVITY);
   getOrCreateSheet_(ss, SHEETS.TRANSACTIONS, HEADERS.TRANSACTIONS);
+  getOrCreateSheet_(ss, SHEETS.PAGES, HEADERS.PAGES);
   const settings = getOrCreateSheet_(ss, SHEETS.SETTINGS, HEADERS.SETTINGS);
 
   const defaults = {
@@ -160,7 +169,8 @@ function setupSystem() {
     dashboard_image_url: '',
     dashboard_image_desc: '',
     remote_versions_json: JSON.stringify(DEFAULT_REMOTE_VERSIONS),
-    admin_route_hint: '#admin'
+    admin_route_hint: '#admin',
+    custom_pages_folder_id: ''
   };
   Object.keys(defaults).forEach(key => ensureSetting_(settings, key, defaults[key]));
   return {ok:true, dbId:ss.getId(), url:ss.getUrl(), name:ss.getName()};
@@ -378,9 +388,11 @@ function userLogin_(p) {
   setCellByHeader_(sheet, found.rowIndex, headers, 'updated_at', nowIso_());
 
   logActivity_('user', user.name, email, 'user_login', 'success', deviceType, deviceId, user.payment_ref, 'User logged in successfully.');
+  var token = issueToken_('user', email, 'user');
   return {
     ok:true,
     message:'Login successful.',
+    token: token,
     user:{
       name:user.name,
       email:user.email,
@@ -457,6 +469,8 @@ function adminOverview_(p) {
     .sort((a,b) => String((b.verified_at || b.submitted_at || b.attempted_at)).localeCompare(String((a.verified_at || a.submitted_at || a.attempted_at))))
     .slice(0, 200);
   const settings = getSettingsMap_();
+  const pages = getObjects_(getSheet_(SHEETS.PAGES)).filter(r => String(r.is_deleted) !== 'true')
+    .sort((a,b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || String(b.updated_at).localeCompare(String(a.updated_at)));
 
   const counts = {
     users_total: users.length,
@@ -483,7 +497,8 @@ function adminOverview_(p) {
         imageDesc: settings.dashboard_image_desc || ''
       },
       versionSources: parseJsonSafe_(settings.remote_versions_json, DEFAULT_REMOTE_VERSIONS)
-    }
+    },
+    pages: pages
   };
 }
 
@@ -654,6 +669,162 @@ function adminUpdateVersionSources_(p) {
   return { ok:true, message:'Version source map saved.', versionSources: parsed };
 }
 
+
+
+function userListPages_(p) {
+  var auth = requireUser_(p.token);
+  var pages = getObjects_(getSheet_(SHEETS.PAGES))
+    .filter(function(r) { return String(r.is_deleted) !== 'true' && String(r.status) === 'active'; })
+    .sort(function(a, b) {
+      return Number(a.sort_order || 0) - Number(b.sort_order || 0) || String(b.updated_at).localeCompare(String(a.updated_at));
+    })
+    .map(function(r) {
+      return {
+        page_id: r.page_id,
+        title: r.title,
+        slug: r.slug,
+        sort_order: Number(r.sort_order || 0),
+        status: r.status,
+        updated_at: r.updated_at,
+        source_file_name: r.source_file_name || ''
+      };
+    });
+  logActivity_('user', auth.user.name, auth.user.email, 'user_list_pages', 'success', '', '', auth.user.paymentRef || '', 'User loaded custom pages list.');
+  return { ok:true, pages: pages };
+}
+
+function userGetPage_(p) {
+  var auth = requireUser_(p.token);
+  var pageId = clean_(p.pageId);
+  if (!pageId) throw new Error('Page ID is required.');
+  var found = findRowByField_(getSheet_(SHEETS.PAGES), 'page_id', pageId);
+  if (!found || String(found.obj.is_deleted) === 'true' || String(found.obj.status) !== 'active') throw new Error('Page not found or unavailable.');
+  var html = '';
+  try {
+    html = DriveApp.getFileById(String(found.obj.drive_file_id)).getBlob().getDataAsString();
+  } catch (err) {
+    throw new Error('Could not load the stored HTML page.');
+  }
+  logActivity_('user', auth.user.name, auth.user.email, 'user_get_page', 'success', '', '', auth.user.paymentRef || '', 'Opened custom page: ' + found.obj.title);
+  return {
+    ok:true,
+    page: {
+      page_id: found.obj.page_id,
+      title: found.obj.title,
+      slug: found.obj.slug,
+      sort_order: Number(found.obj.sort_order || 0),
+      updated_at: found.obj.updated_at
+    },
+    html: html
+  };
+}
+
+function adminSaveCustomPage_(p) {
+  var auth = requireAdmin_(p.token);
+  var pageId = clean_(p.pageId);
+  var title = clean_(p.title);
+  var htmlContent = String(p.htmlContent || '');
+  var sortOrderRaw = clean_(p.sortOrder);
+  var sortOrder = sortOrderRaw === '' ? 0 : Number(sortOrderRaw);
+  var status = clean_(p.status).toLowerCase() || 'active';
+  var sourceFileName = clean_(p.sourceFileName);
+  if (!title) throw new Error('Page title is required.');
+  if (!htmlContent) throw new Error('Provide the HTML content or upload an HTML file first.');
+  if (!Number.isFinite(sortOrder)) throw new Error('Sort order must be a valid number.');
+  if (['active','draft','inactive'].indexOf(status) === -1) status = 'active';
+  if (htmlContent.length > 1500000) throw new Error('The HTML file is too large for this setup. Reduce the page size and try again.');
+
+  var sheet = getSheet_(SHEETS.PAGES);
+  var headers = getHeaders_(sheet);
+  var slug = ensureUniquePageSlug_(sheet, slugify_(clean_(p.slug) || title), pageId);
+  var folder = getOrCreateCustomPagesFolder_();
+  var fileName = slug + '.html';
+  var now = nowIso_();
+
+  if (pageId) {
+    var found = findRowByField_(sheet, 'page_id', pageId);
+    if (!found || String(found.obj.is_deleted) === 'true') throw new Error('The selected page could not be found.');
+    var driveFileId = clean_(found.obj.drive_file_id);
+    if (driveFileId) {
+      try {
+        var file = DriveApp.getFileById(driveFileId);
+        file.setContent(htmlContent);
+        file.setName(fileName);
+      } catch (err) {
+        var recreated = folder.createFile(fileName, htmlContent, MimeType.HTML);
+        driveFileId = recreated.getId();
+      }
+    } else {
+      driveFileId = folder.createFile(fileName, htmlContent, MimeType.HTML).getId();
+    }
+    setCellByHeader_(sheet, found.rowIndex, headers, 'title', title);
+    setCellByHeader_(sheet, found.rowIndex, headers, 'slug', slug);
+    setCellByHeader_(sheet, found.rowIndex, headers, 'sort_order', sortOrder);
+    setCellByHeader_(sheet, found.rowIndex, headers, 'status', status);
+    setCellByHeader_(sheet, found.rowIndex, headers, 'drive_file_id', driveFileId);
+    setCellByHeader_(sheet, found.rowIndex, headers, 'source_file_name', sourceFileName);
+    setCellByHeader_(sheet, found.rowIndex, headers, 'updated_at', now);
+    logActivity_('admin', auth.admin.name, auth.admin.email, 'admin_save_custom_page', 'success', '', '', '', 'Updated custom page: ' + title);
+    return { ok:true, message:'Custom page updated successfully.', pageId: pageId, slug: slug };
+  }
+
+  var newFile = folder.createFile(fileName, htmlContent, MimeType.HTML);
+  pageId = uid_('PG');
+  appendRow_(sheet, {
+    page_id: pageId,
+    title: title,
+    slug: slug,
+    sort_order: sortOrder,
+    status: status,
+    drive_file_id: newFile.getId(),
+    source_file_name: sourceFileName,
+    created_by: auth.admin.email,
+    created_at: now,
+    updated_at: now,
+    is_deleted: 'false'
+  }, HEADERS.PAGES);
+  logActivity_('admin', auth.admin.name, auth.admin.email, 'admin_save_custom_page', 'success', '', '', '', 'Created custom page: ' + title);
+  return { ok:true, message:'Custom page saved successfully.', pageId: pageId, slug: slug };
+}
+
+
+function adminGetCustomPage_(p) {
+  var auth = requireAdmin_(p.token);
+  var pageId = clean_(p.pageId);
+  if (!pageId) throw new Error('Page ID is required.');
+  var found = findRowByField_(getSheet_(SHEETS.PAGES), 'page_id', pageId);
+  if (!found || String(found.obj.is_deleted) === 'true') throw new Error('Page not found.');
+  var html = '';
+  try { html = DriveApp.getFileById(String(found.obj.drive_file_id)).getBlob().getDataAsString(); } catch (err) { throw new Error('Could not load the stored HTML page.'); }
+  logActivity_('admin', auth.admin.name, auth.admin.email, 'admin_get_custom_page', 'success', '', '', '', 'Loaded custom page for editing: ' + found.obj.title);
+  return { ok:true, page: found.obj, html: html };
+}
+
+function adminDeleteCustomPage_(p) {
+  var auth = requireAdmin_(p.token);
+  var pageId = clean_(p.pageId);
+  var permanent = String(p.permanent) === 'true' || p.permanent === true;
+  if (!pageId) throw new Error('Page ID is required.');
+  var sheet = getSheet_(SHEETS.PAGES);
+  var found = findRowByField_(sheet, 'page_id', pageId);
+  if (!found) throw new Error('Page not found.');
+  if (permanent) {
+    var driveFileId = clean_(found.obj.drive_file_id);
+    if (driveFileId) {
+      try { DriveApp.getFileById(driveFileId).setTrashed(true); } catch (err) {}
+    }
+    sheet.deleteRow(found.rowIndex);
+    logActivity_('admin', auth.admin.name, auth.admin.email, 'admin_delete_custom_page', 'success', '', '', '', 'Deleted custom page forever: ' + found.obj.title);
+    return { ok:true, message:'Custom page deleted forever.' };
+  }
+  var headers = getHeaders_(sheet);
+  setCellByHeader_(sheet, found.rowIndex, headers, 'status', 'deleted');
+  setCellByHeader_(sheet, found.rowIndex, headers, 'is_deleted', 'true');
+  setCellByHeader_(sheet, found.rowIndex, headers, 'updated_at', nowIso_());
+  logActivity_('admin', auth.admin.name, auth.admin.email, 'admin_delete_custom_page', 'success', '', '', '', 'Deleted custom page: ' + found.obj.title);
+  return { ok:true, message:'Custom page removed.' };
+}
+
 function logoutToken_(p) {
   const token = String(p.token || '');
   if (!token) return {ok:true, message:'Logged out.'};
@@ -684,6 +855,22 @@ function authByToken_(token) {
   const admin = mustFindByEmail_(getSheet_(SHEETS.ADMINS), normalizeEmail_(row.email), 'Admin not found.').obj;
   if (String(admin.status) !== 'active' || String(admin.is_deleted) === 'true') return {ok:false, message:'Admin account inactive.'};
   return {ok:true, admin:{name:admin.name, email:admin.email, role:admin.role}};
+}
+
+function requireUser_(token) {
+  var auth = authUserByToken_(String(token || ''));
+  if (!auth.ok) throw new Error(auth.message);
+  return auth;
+}
+function authUserByToken_(token) {
+  if (!token) return {ok:false, message:'Missing user token.'};
+  var tokens = getObjects_(getSheet_(SHEETS.TOKENS));
+  var now = new Date();
+  var row = tokens.find(function(r) { return r.token === token && r.type === 'user' && r.status === 'active' && new Date(r.expires_at) > now; });
+  if (!row) return {ok:false, message:'Session expired. Please sign in again.'};
+  var user = mustFindByEmail_(getSheet_(SHEETS.USERS), normalizeEmail_(row.email), 'User not found.').obj;
+  if (String(user.status) !== 'approved' || String(user.is_deleted) === 'true') return {ok:false, message:'User account inactive.'};
+  return {ok:true, user:{name:user.name, email:user.email, status:user.status, paymentRef:user.payment_ref || ''}};
 }
 function issueToken_(type, email, role) {
   const token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
@@ -823,6 +1010,47 @@ function setSetting_(key, value) {
   appendRow_(sheet, {key:key, value:value}, HEADERS.SETTINGS);
 }
 
+
+function findRowByField_(sheet, headerName, value) {
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return null;
+  var headers = values[0].map(String);
+  var idx = headers.indexOf(headerName);
+  if (idx === -1) return null;
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][idx]) === String(value)) {
+      var obj = {};
+      headers.forEach(function(h, col) { obj[h] = values[i][col]; });
+      return { rowIndex:i + 1, obj:obj };
+    }
+  }
+  return null;
+}
+function slugify_(value) {
+  var slug = String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug || ('page-' + new Date().getTime());
+}
+function ensureUniquePageSlug_(sheet, slug, pageId) {
+  var rows = getObjects_(sheet);
+  var base = slug || ('page-' + new Date().getTime());
+  var current = base;
+  var counter = 2;
+  while (rows.some(function(r) { return String(r.is_deleted) !== 'true' && String(r.slug) === current && String(r.page_id) !== String(pageId || ''); })) {
+    current = base + '-' + counter;
+    counter++;
+  }
+  return current;
+}
+function getOrCreateCustomPagesFolder_() {
+  var settings = getSettingsMap_();
+  var folderId = clean_(settings.custom_pages_folder_id);
+  if (folderId) {
+    try { return DriveApp.getFolderById(folderId); } catch (err) {}
+  }
+  var folder = DriveApp.createFolder(APP_NAME + ' Custom Pages');
+  setSetting_('custom_pages_folder_id', folder.getId());
+  return folder;
+}
 function parseJsonSafe_(txt, fallback) {
   try { return JSON.parse(String(txt || '')); } catch (e) { return fallback; }
 }

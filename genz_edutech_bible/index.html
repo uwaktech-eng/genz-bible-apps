@@ -123,6 +123,13 @@
   .legal-grid ul { margin:0; padding-left:18px; color:var(--muted); }
   .section-block { margin-top:18px; }
   .section-block p { color:var(--muted); }
+  .page-manager-grid { display:grid; grid-template-columns:1.05fr .95fr; gap:16px; }
+  .page-list-vertical { display:grid; gap:12px; max-height:520px; overflow:auto; }
+  .page-item { padding:14px; border-radius:18px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.045); }
+  .page-item.active { border-color:rgba(34,211,238,.42); box-shadow:0 12px 28px rgba(34,211,238,.12); }
+  .html-frame { width:100%; min-height:760px; border:none; border-radius:22px; background:#fff; box-shadow:var(--shadow); }
+  .page-pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:rgba(34,211,238,.12); border:1px solid rgba(34,211,238,.22); color:#d7fbff; font-size:.78rem; }
+  @media (max-width: 1040px) { .page-manager-grid { grid-template-columns:1fr; } .html-frame { min-height:560px; } }
   @media (max-width: 1040px) { .hero, .reader-layout { grid-template-columns:1fr; } .sidebar-sticky { position:static; } .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width: 640px) { .shell { padding:12px; } .stats, .grid-2 { grid-template-columns:1fr; } .topbar { border-radius:22px; } .soft-card, .panel { padding:15px; } }
 </style>
@@ -278,6 +285,35 @@
           <div style="margin-top:14px;" id="chapterVerses"></div>
         </div>
       </main>
+    </div>
+
+
+
+    <div class="glass panel hidden" id="memberPagesPanel">
+      <div class="headline">
+        <div>
+          <h3>Registered Members Web Pages</h3>
+          <div class="tiny muted">Admin-added HTML tools, lessons, and interactive pages appear here in the exact order set from the admin portal.</div>
+        </div>
+        <span class="pill" id="memberPagesCount">0 pages</span>
+      </div>
+      <div class="page-manager-grid" style="margin-top:14px;">
+        <div class="glass soft-card">
+          <div class="headline"><h3>Available pages</h3><span class="tiny muted">Registered users only</span></div>
+          <div class="page-list-vertical" id="memberPageList"></div>
+        </div>
+        <div class="glass soft-card">
+          <div class="headline">
+            <div>
+              <h3 id="memberPageTitle">Select a page</h3>
+              <div class="tiny muted" id="memberPageMeta">When you open a page, it will load here for full interaction.</div>
+            </div>
+            <span class="page-pill" id="memberPageStatus">Waiting</span>
+          </div>
+          <iframe id="memberPageFrame" class="html-frame hidden" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads" title="Registered member page"></iframe>
+          <div class="note tiny" id="memberPageEmpty">No page opened yet. After admin uploads HTML pages, registered users can open and interact with them here.</div>
+        </div>
+      </div>
     </div>
 
     <div class="section-block" id="about">
@@ -463,6 +499,40 @@
           </div>
         </div>
       </div>
+
+      <div class="grid-2" style="margin-top:16px;">
+        <div class="glass soft-card">
+          <div class="headline"><h3>Custom HTML pages</h3><span class="tiny muted">Upload or paste .html pages for registered users</span></div>
+          <div class="stack">
+            <input class="input" id="customPageTitle" placeholder="Page title">
+            <div class="row">
+              <input class="input" id="customPageSlug" placeholder="Page slug (optional)">
+              <input class="input" id="customPageSortOrder" type="number" placeholder="Sort order" value="1">
+            </div>
+            <div class="row">
+              <select class="select" id="customPageStatus">
+                <option value="active">Active</option>
+                <option value="draft">Draft</option>
+                <option value="inactive">Inactive</option>
+              </select>
+              <input class="input" id="customPageFile" type="file" accept=".html,text/html">
+            </div>
+            <textarea class="input codebox" id="customPageHtml" placeholder="Paste full HTML here or choose an .html file above."></textarea>
+            <input class="input hidden" id="customPageId" placeholder="Page ID">
+            <div class="row">
+              <button class="soft-btn" id="saveCustomPageBtn">Save page</button>
+              <button class="soft-btn secondary" id="clearCustomPageBtn">Clear form</button>
+            </div>
+            <div class="note tiny">Trusted admin HTML pages are shown only to approved signed-in users. The sample graph page you uploaded can be pasted here or selected as a .html file.
+            </div>
+          </div>
+        </div>
+
+        <div class="glass soft-card">
+          <div class="headline"><h3>Saved page order</h3><span class="tiny muted">Edit, open, delete, arrange</span></div>
+          <div class="page-list-vertical" id="adminPageList"></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -512,8 +582,11 @@ const state = {
   currentBook: 0,
   currentChapter: 0,
   user: null,
+  userToken: '',
   admin: null,
   adminToken: localStorage.getItem('kjv_admin_token') || '',
+  pages: [],
+  currentPageId: '',
   deferredPrompt: null,
   hasPrincipal: false,
   remoteVersionSources: {...DEFAULT_REMOTE_VERSIONS},
@@ -605,6 +678,9 @@ function wireButtons() {
   qs('#exportSummaryBtn')?.addEventListener('click', () => downloadSummaryCsv());
   qs('#exportActivitiesBtn')?.addEventListener('click', () => downloadCsv('genz-activities.csv', state.overview?.activities || []));
   qs('#exportTransactionsBtn')?.addEventListener('click', () => downloadCsv('genz-transactions.csv', state.overview?.transactions || []));
+  qs('#saveCustomPageBtn')?.addEventListener('click', saveCustomPage);
+  qs('#clearCustomPageBtn')?.addEventListener('click', clearCustomPageForm);
+  qs('#customPageFile')?.addEventListener('change', handleCustomPageFilePick);
 }
 
 async function registerServiceWorker() { if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('./sw.js'); } catch (e) { console.log(e); } } }
@@ -637,10 +713,19 @@ function hydrateLocalSession() {
   const raw = localStorage.getItem('kjv_user_session');
   if (raw && !IS_ADMIN_MODE) {
     try {
-      state.user = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.user) {
+        state.user = parsed.user;
+        state.userToken = parsed.token || '';
+      } else {
+        state.user = parsed;
+        state.userToken = '';
+      }
       qs('#appLayout').classList.remove('hidden');
+      qs('#memberPagesPanel')?.classList.remove('hidden');
       qs('#logoutBtn').classList.remove('hidden');
       qs('#whoami').textContent = state.user.name || state.user.email;
+      if (state.userToken) loadUserPages();
     } catch (e) { localStorage.removeItem('kjv_user_session'); }
   }
 }
@@ -891,9 +976,11 @@ async function loginUser() {
       deviceId: getDeviceId(),
       deviceType: getDeviceType()
     }, 'post');
-    state.user = data.user; localStorage.setItem('kjv_user_session', JSON.stringify(data.user));
-    qs('#appLayout').classList.remove('hidden'); qs('#logoutBtn').classList.remove('hidden'); qs('#whoami').textContent = data.user.name || data.user.email;
+    state.user = data.user; state.userToken = data.token || '';
+    localStorage.setItem('kjv_user_session', JSON.stringify({ token: state.userToken, user: data.user }));
+    qs('#appLayout').classList.remove('hidden'); qs('#memberPagesPanel')?.classList.remove('hidden'); qs('#logoutBtn').classList.remove('hidden'); qs('#whoami').textContent = data.user.name || data.user.email;
     toast(data.message); renderChapter();
+    await loadUserPages();
   } catch (e) { toast(e.message); } finally { setLoading(btn, false); }
 }
 async function recoverUserPassword() {
@@ -909,11 +996,18 @@ async function recoverUserPassword() {
     activateTab('#authTabs', 'loginTab');
   } catch (e) { toast(e.message); } finally { setLoading(btn, false); }
 }
-function userLogout() {
+async function userLogout() {
+  const token = state.userToken;
   state.user = null;
+  state.userToken = '';
+  state.pages = [];
+  state.currentPageId = '';
   localStorage.removeItem('kjv_user_session');
   qs('#appLayout').classList.add('hidden');
+  qs('#memberPagesPanel')?.classList.add('hidden');
   qs('#logoutBtn').classList.add('hidden');
+  if (token) { try { await api('user_logout', { token }, 'post'); } catch {} }
+  renderUserPages();
   toast('Logged out.');
 }
 
@@ -985,6 +1079,7 @@ async function loadAdminOverview() {
     renderTransactions(data.transactions || []);
     renderActivities(data.activities || []);
     renderSubadmins(data.admins || [], data.me.role === 'principal');
+    renderAdminPages(data.pages || []);
 
     qs('#displayImageUrl').value = state.branding.imageUrl || '';
     qs('#displayImageDesc').value = state.branding.imageDesc || '';
@@ -1126,6 +1221,154 @@ async function saveVersionSettings() {
     await loadAdminOverview();
   } catch (e) { toast(e.message || 'Version source JSON is invalid.'); } finally { setLoading(btn, false); }
 }
+
+
+async function loadUserPages() {
+  if (!state.userToken || IS_ADMIN_MODE) return;
+  try {
+    const data = await api('user_list_pages', { token: state.userToken }, 'post');
+    state.pages = data.pages || [];
+    renderUserPages();
+    if (state.pages.length && !state.currentPageId) {
+      await openMemberPage(state.pages[0].page_id, false);
+    }
+  } catch (e) {
+    console.log(e);
+    renderUserPages();
+  }
+}
+
+function renderUserPages() {
+  const box = qs('#memberPageList');
+  if (!box) return;
+  qs('#memberPagesCount').textContent = `${state.pages.length} page${state.pages.length === 1 ? '' : 's'}`;
+  if (!state.pages.length) {
+    box.innerHTML = '<div class="note tiny">No custom web pages have been published yet. Once the admin uploads HTML pages, approved users will see them here.</div>';
+    qs('#memberPageFrame')?.classList.add('hidden');
+    qs('#memberPageEmpty')?.classList.remove('hidden');
+    qs('#memberPageTitle').textContent = 'Select a page';
+    qs('#memberPageMeta').textContent = 'When you open a page, it will load here for full interaction.';
+    qs('#memberPageStatus').textContent = 'Waiting';
+    return;
+  }
+  box.innerHTML = state.pages.map(page => `
+    <div class="page-item ${state.currentPageId === page.page_id ? 'active' : ''}">
+      <h4>${escapeHtml(page.title)}</h4>
+      <div class="tiny muted">Order: ${escapeHtml(String(page.sort_order ?? '0'))} • Slug: ${escapeHtml(page.slug || '—')}</div>
+      <div class="tiny muted">Updated: ${escapeHtml(page.updated_at || '—')}</div>
+      <div class="row" style="margin-top:10px;">
+        <button class="soft-btn secondary" onclick="openMemberPage('${page.page_id}')">Open</button>
+      </div>
+    </div>
+  `).join('');
+}
+window.openMemberPage = async function(pageId, toastOnDone = true) {
+  if (!state.userToken) return toast('Please sign in first.');
+  try {
+    const data = await api('user_get_page', { token: state.userToken, pageId }, 'post');
+    state.currentPageId = pageId;
+    renderUserPages();
+    const frame = qs('#memberPageFrame');
+    frame.srcdoc = data.html || '<!doctype html><html><body><p>No HTML content found.</p></body></html>';
+    frame.classList.remove('hidden');
+    qs('#memberPageEmpty').classList.add('hidden');
+    qs('#memberPageTitle').textContent = data.page?.title || 'Opened page';
+    qs('#memberPageMeta').textContent = `Slug: ${data.page?.slug || '—'} • Order: ${data.page?.sort_order ?? '0'}`;
+    qs('#memberPageStatus').textContent = 'Loaded';
+    if (toastOnDone) toast('Custom member page opened.');
+  } catch (e) { toast(e.message); }
+};
+
+function renderAdminPages(pages) {
+  const box = qs('#adminPageList');
+  if (!box) return;
+  box.innerHTML = (pages || []).map(page => `
+    <div class="page-item">
+      <h4>${escapeHtml(page.title || 'Untitled')}</h4>
+      <div class="tiny muted">Slug: ${escapeHtml(page.slug || '—')} • Order: ${escapeHtml(String(page.sort_order || '0'))}</div>
+      <div class="tiny muted">Status: ${escapeHtml(page.status || 'active')} • Source: ${escapeHtml(page.source_file_name || 'manual entry')}</div>
+      <div class="tiny muted">Updated: ${escapeHtml(page.updated_at || '—')}</div>
+      <div class="row" style="margin-top:10px;">
+        <button class="soft-btn secondary" onclick="editCustomPage('${page.page_id}')">Edit</button>
+        <button class="soft-btn danger" onclick="deleteCustomPage('${page.page_id}', false)">Remove</button>
+        <button class="soft-btn danger" onclick="deleteCustomPage('${page.page_id}', true)">Delete forever</button>
+      </div>
+    </div>
+  `).join('') || '<div class="tiny muted">No custom HTML pages saved yet.</div>';
+}
+
+function handleCustomPageFilePick(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!/\.html?$/i.test(file.name)) {
+    event.target.value = '';
+    return toast('Choose a valid .html file.');
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    qs('#customPageHtml').value = String(reader.result || '');
+    if (!qs('#customPageTitle').value) qs('#customPageTitle').value = file.name.replace(/\.html?$/i, '').replace(/[-_]+/g, ' ');
+    if (!qs('#customPageSlug').value) qs('#customPageSlug').value = file.name.replace(/\.html?$/i, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    toast('HTML file loaded into the form. Save it to publish for registered users.');
+  };
+  reader.readAsText(file);
+}
+
+function clearCustomPageForm() {
+  ['#customPageId','#customPageTitle','#customPageSlug','#customPageHtml'].forEach(sel => { if (qs(sel)) qs(sel).value = ''; });
+  if (qs('#customPageSortOrder')) qs('#customPageSortOrder').value = '1';
+  if (qs('#customPageStatus')) qs('#customPageStatus').value = 'active';
+  if (qs('#customPageFile')) qs('#customPageFile').value = '';
+}
+
+window.editCustomPage = async function(pageId) {
+  const page = (state.overview?.pages || []).find(p => p.page_id === pageId);
+  if (!page) return toast('Page details not found. Refresh admin dashboard.');
+  qs('#customPageId').value = page.page_id || '';
+  qs('#customPageTitle').value = page.title || '';
+  qs('#customPageSlug').value = page.slug || '';
+  qs('#customPageSortOrder').value = page.sort_order || 0;
+  qs('#customPageStatus').value = page.status || 'active';
+  try {
+    const data = await api('admin_get_custom_page', { token: state.adminToken, pageId }, 'post');
+    qs('#customPageHtml').value = data.html || '';
+    toast('Edit mode loaded with the current HTML content.');
+  } catch (e) {
+    qs('#customPageHtml').value = '';
+    toast(e.message);
+  }
+};
+
+async function saveCustomPage() {
+  if (!state.adminToken) return toast('Admin sign-in is required.');
+  const btn = qs('#saveCustomPageBtn');
+  setLoading(btn, true);
+  try {
+    const file = qs('#customPageFile')?.files?.[0];
+    const data = await api('admin_save_custom_page', {
+      token: state.adminToken,
+      pageId: qs('#customPageId').value,
+      title: qs('#customPageTitle').value,
+      slug: qs('#customPageSlug').value,
+      sortOrder: qs('#customPageSortOrder').value,
+      status: qs('#customPageStatus').value,
+      htmlContent: qs('#customPageHtml').value,
+      sourceFileName: file ? file.name : ''
+    }, 'post');
+    toast(data.message);
+    clearCustomPageForm();
+    await loadAdminOverview();
+  } catch (e) { toast(e.message); } finally { setLoading(btn, false); }
+}
+
+window.deleteCustomPage = async function(pageId, permanent) {
+  if (!confirm((permanent ? 'Delete forever ' : 'Remove ') + 'this custom page?')) return;
+  try {
+    const data = await api('admin_delete_custom_page', { token: state.adminToken, pageId, permanent }, 'post');
+    toast(data.message);
+    await loadAdminOverview();
+  } catch (e) { toast(e.message); }
+};
 
 async function adminLogout(showToast = true) {
   const token = state.adminToken;

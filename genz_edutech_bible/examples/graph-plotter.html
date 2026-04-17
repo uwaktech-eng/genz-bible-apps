@@ -1,0 +1,2771 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Math Graph Plotter Simulator</title>
+  <style>
+    :root {
+      --bg: #eef4ff;
+      --bg-elevated: rgba(255, 255, 255, 0.82);
+      --panel: rgba(255, 255, 255, 0.74);
+      --panel-strong: rgba(255, 255, 255, 0.92);
+      --text: #18233b;
+      --text-soft: #56647f;
+      --text-faint: #7b89a4;
+      --border: rgba(56, 78, 116, 0.14);
+      --border-strong: rgba(56, 78, 116, 0.24);
+      --shadow: 0 18px 48px rgba(58, 78, 115, 0.12);
+      --shadow-soft: 0 8px 20px rgba(58, 78, 115, 0.08);
+      --primary: #4d74ff;
+      --primary-2: #7f8dff;
+      --accent: #1ec7a5;
+      --danger: #ef5b77;
+      --warning: #f5a524;
+      --success: #0ea76b;
+      --graph-bg: #fcfdff;
+      --grid-minor: rgba(68, 91, 140, 0.08);
+      --grid-major: rgba(68, 91, 140, 0.16);
+      --axis: rgba(24, 35, 59, 0.82);
+      --origin: #ef5b77;
+      --muted-chip: rgba(77, 116, 255, 0.08);
+      --canvas-shadow: inset 0 0 0 1px rgba(56, 78, 116, 0.1), 0 18px 48px rgba(58, 78, 115, 0.14);
+      --hero-glow: radial-gradient(circle at top left, rgba(77, 116, 255, 0.24), transparent 42%), radial-gradient(circle at top right, rgba(30, 199, 165, 0.18), transparent 32%);
+      --button-hover: rgba(77, 116, 255, 0.11);
+      --overlay-card: rgba(255,255,255,0.72);
+      --overlay-border: rgba(56, 78, 116, 0.16);
+      --focus-ring: 0 0 0 4px rgba(77, 116, 255, 0.16);
+    }
+
+    html[data-theme="dark"] {
+      --bg: #07101f;
+      --bg-elevated: rgba(11, 20, 38, 0.82);
+      --panel: rgba(10, 18, 35, 0.68);
+      --panel-strong: rgba(13, 22, 42, 0.9);
+      --text: #f3f7ff;
+      --text-soft: #b2c0db;
+      --text-faint: #8092b1;
+      --border: rgba(150, 173, 221, 0.12);
+      --border-strong: rgba(150, 173, 221, 0.22);
+      --shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+      --shadow-soft: 0 8px 18px rgba(0, 0, 0, 0.24);
+      --primary: #7ea0ff;
+      --primary-2: #7f8dff;
+      --accent: #3dd8b4;
+      --danger: #ff6e86;
+      --warning: #ffb84f;
+      --success: #3cd48d;
+      --graph-bg: #081223;
+      --grid-minor: rgba(171, 189, 232, 0.09);
+      --grid-major: rgba(171, 189, 232, 0.17);
+      --axis: rgba(242, 246, 255, 0.88);
+      --origin: #ff7d91;
+      --muted-chip: rgba(126, 160, 255, 0.12);
+      --canvas-shadow: inset 0 0 0 1px rgba(150, 173, 221, 0.1), 0 20px 52px rgba(0, 0, 0, 0.36);
+      --hero-glow: radial-gradient(circle at top left, rgba(126, 160, 255, 0.16), transparent 42%), radial-gradient(circle at top right, rgba(61, 216, 180, 0.12), transparent 32%);
+      --button-hover: rgba(126, 160, 255, 0.12);
+      --overlay-card: rgba(7, 16, 31, 0.72);
+      --overlay-border: rgba(150, 173, 221, 0.16);
+      --focus-ring: 0 0 0 4px rgba(126, 160, 255, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-image: var(--hero-glow), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+    }
+
+    button, input, select {
+      font: inherit;
+      color: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      transition: transform 140ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .app-shell {
+      width: min(1500px, calc(100vw - 24px));
+      margin: 16px auto 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      gap: 18px;
+      padding: 24px clamp(18px, 3vw, 30px);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: linear-gradient(180deg, var(--bg-elevated), rgba(255,255,255,0.03));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px) saturate(145%);
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(8px);
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    .hero::before {
+      width: 220px;
+      height: 220px;
+      right: -40px;
+      top: -60px;
+      background: radial-gradient(circle, rgba(126,160,255,0.28), transparent 70%);
+    }
+
+    .hero::after {
+      width: 180px;
+      height: 180px;
+      left: -40px;
+      bottom: -60px;
+      background: radial-gradient(circle, rgba(61,216,180,0.22), transparent 70%);
+    }
+
+    .hero-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .title-wrap {
+      display: grid;
+      gap: 8px;
+      max-width: 760px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      width: fit-content;
+      border-radius: 999px;
+      background: var(--muted-chip);
+      color: var(--primary);
+      border: 1px solid rgba(126, 160, 255, 0.15);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      font-size: 0.9rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.04;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 70ch;
+      color: var(--text-soft);
+      line-height: 1.65;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-soft);
+      font-weight: 650;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .metric-card {
+      padding: 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      display: grid;
+      gap: 6px;
+      min-height: 94px;
+    }
+
+    .metric-label {
+      font-size: 0.84rem;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric-value {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .metric-note {
+      font-size: 0.92rem;
+      color: var(--text-soft);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      border-radius: 26px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--panel), rgba(255,255,255,0.03));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px) saturate(145%);
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+    }
+
+    .sidebar {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+      scrollbar-width: thin;
+    }
+
+    .section {
+      padding: 16px;
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      display: grid;
+      gap: 14px;
+    }
+
+    .section h2,
+    .section h3 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .section-subtitle {
+      color: var(--text-soft);
+      font-size: 0.94rem;
+      line-height: 1.5;
+      margin-top: -6px;
+    }
+
+    .input-row,
+    .mini-grid,
+    .stack,
+    .toolbar-grid,
+    .analysis-grid,
+    .toggles-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .input-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: stretch;
+    }
+
+    .field,
+    .compact-field,
+    .select,
+    .number-input {
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      padding: 13px 14px;
+      transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+    }
+
+    .field::placeholder,
+    .compact-field::placeholder,
+    .number-input::placeholder { color: var(--text-faint); }
+
+    .field:hover,
+    .compact-field:hover,
+    .select:hover,
+    .number-input:hover { border-color: var(--border-strong); }
+
+    .compact-field,
+    .select,
+    .number-input {
+      padding: 10px 12px;
+      border-radius: 14px;
+      min-height: 42px;
+    }
+
+    .small-note {
+      font-size: 0.88rem;
+      color: var(--text-faint);
+      line-height: 1.55;
+    }
+
+    .button,
+    .icon-button,
+    .chip,
+    .toggle-button {
+      border-radius: 16px;
+      border: 1px solid transparent;
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-weight: 700;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .button {
+      min-height: 46px;
+      padding: 0 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .button.primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: white;
+      border-color: rgba(255,255,255,0.15);
+    }
+
+    .button.secondary,
+    .icon-button,
+    .chip,
+    .toggle-button {
+      border-color: var(--border);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .button.secondary:hover,
+    .icon-button:hover,
+    .chip:hover,
+    .toggle-button:hover { background: var(--button-hover); }
+
+    .button.success {
+      background: linear-gradient(135deg, rgba(14,167,107,0.9), rgba(61,216,180,0.82));
+      color: white;
+    }
+
+    .button.danger-soft {
+      background: rgba(239,91,119,0.12);
+      color: var(--danger);
+      border-color: rgba(239,91,119,0.25);
+    }
+
+    .chip-wrap,
+    .legend-wrap,
+    .tag-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      min-height: 38px;
+      padding: 0 12px;
+      font-weight: 650;
+      color: var(--text-soft);
+    }
+
+    .chip code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+    }
+
+    .graph-panel {
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .graph-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .segmented {
+      display: inline-grid;
+      grid-auto-flow: column;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .segmented button {
+      min-height: 38px;
+      min-width: 38px;
+      padding: 0 12px;
+      border-radius: 14px;
+      border: 0;
+      background: transparent;
+      color: var(--text-soft);
+      font-weight: 700;
+    }
+
+    .segmented button.active,
+    .toggle-button.active {
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: white;
+    }
+
+    .toggle-button {
+      min-height: 40px;
+      padding: 0 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-soft);
+    }
+
+    .graph-shell {
+      position: relative;
+      min-height: 620px;
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: var(--canvas-shadow);
+      isolation: isolate;
+    }
+
+    .graph-surface {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      touch-action: none;
+      background: var(--graph-bg);
+      user-select: none;
+    }
+
+    #graphCanvas,
+    #graphOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #graphOverlay {
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .graph-corner,
+    .graph-status,
+    .legend-box,
+    .analysis-overlay,
+    .empty-overlay {
+      position: absolute;
+      z-index: 3;
+      border: 1px solid var(--overlay-border);
+      border-radius: 18px;
+      background: var(--overlay-card);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .graph-corner {
+      top: 14px;
+      left: 14px;
+      padding: 10px 12px;
+      display: grid;
+      gap: 4px;
+      min-width: 180px;
+    }
+
+    .graph-corner strong,
+    .analysis-overlay strong { font-size: 0.94rem; }
+
+    .graph-status {
+      right: 14px;
+      top: 14px;
+      padding: 12px 14px;
+      display: grid;
+      gap: 4px;
+      max-width: min(280px, 50vw);
+    }
+
+    .legend-box {
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .analysis-overlay {
+      left: 14px;
+      bottom: 90px;
+      padding: 12px 14px;
+      max-width: min(360px, calc(100% - 28px));
+      display: none;
+      gap: 4px;
+    }
+
+    .analysis-overlay.show { display: grid; }
+
+    .empty-overlay {
+      inset: 0;
+      margin: auto;
+      width: min(480px, calc(100% - 42px));
+      height: fit-content;
+      padding: 22px;
+      display: none;
+      gap: 12px;
+      text-align: center;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .empty-overlay.show { display: grid; }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      color: var(--text-soft);
+      font-size: 0.92rem;
+      max-width: 100%;
+    }
+
+    .legend-label {
+      max-width: 170px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .legend-swatch {
+      width: 13px;
+      height: 13px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.08);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      min-height: 40px;
+      border-radius: 999px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-soft);
+    }
+
+    .status-pill.success { color: var(--success); border-color: rgba(60,212,141,0.24); }
+    .status-pill.error { color: var(--danger); border-color: rgba(255,110,134,0.24); }
+    .status-pill.warning { color: var(--warning); border-color: rgba(245,165,36,0.24); }
+
+    .toolbar-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .toggles-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .analysis-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .equation-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .equation-card {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .equation-card:hover {
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .equation-card.selected {
+      border-color: rgba(126,160,255,0.36);
+      box-shadow: 0 12px 28px rgba(126,160,255,0.12);
+    }
+
+    .equation-top {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .equation-meta {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .equation-name {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .equation-name strong {
+      font-size: 0.98rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      letter-spacing: -0.02em;
+    }
+
+    .equation-name span {
+      font-size: 0.84rem;
+      color: var(--text-faint);
+    }
+
+    .swatch-pill {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
+    }
+
+    .equation-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .tiny-button {
+      min-height: 34px;
+      padding: 0 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      color: var(--text-soft);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .tiny-button.trace.active,
+    .tiny-button:hover {
+      background: var(--button-hover);
+      color: var(--text);
+    }
+
+    .inline-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mini-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .labelled {
+      display: grid;
+      gap: 6px;
+    }
+
+    .labelled label {
+      font-size: 0.78rem;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .checkline {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--text-soft);
+      font-weight: 650;
+      font-size: 0.92rem;
+    }
+
+    .checkline input {
+      accent-color: var(--primary);
+      width: 18px;
+      height: 18px;
+      margin: 0;
+    }
+
+    .equation-stats {
+      border-top: 1px dashed var(--border);
+      padding-top: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .equation-stats ul,
+    .analysis-results ul,
+    .help-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text-soft);
+      line-height: 1.6;
+    }
+
+    .analysis-results {
+      display: grid;
+      gap: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%) translateY(24px);
+      width: min(460px, calc(100vw - 24px));
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--panel-strong), rgba(255,255,255,0.03));
+      color: var(--text);
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 220ms ease, transform 220ms ease;
+      z-index: 20;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .toast.info { border-color: rgba(126,160,255,0.24); }
+    .toast.success { border-color: rgba(60,212,141,0.24); }
+    .toast.error { border-color: rgba(255,110,134,0.24); }
+
+    .range-wrap {
+      display: grid;
+      gap: 6px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--primary);
+    }
+
+    .footer-note {
+      padding: 16px 18px;
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      display: grid;
+      gap: 10px;
+    }
+
+    .footer-note h3 {
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .muted {
+      color: var(--text-soft);
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: -0.02em;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--muted-chip);
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 0.82rem;
+      width: fit-content;
+    }
+
+    .trace-line {
+      stroke: rgba(255,255,255,0.26);
+      stroke-width: 1;
+      stroke-dasharray: 6 6;
+    }
+
+    .trace-dot {
+      stroke: rgba(255,255,255,0.9);
+      stroke-width: 2;
+    }
+
+    .trace-label-bg,
+    .marker-label-bg {
+      fill: var(--overlay-card);
+      stroke: var(--overlay-border);
+      stroke-width: 1;
+      rx: 12;
+      ry: 12;
+    }
+
+    .trace-text,
+    .marker-text {
+      fill: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      font-family: Inter, sans-serif;
+    }
+
+    .marker-dot {
+      stroke: rgba(255,255,255,0.9);
+      stroke-width: 2;
+    }
+
+    .helper-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 1180px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar {
+        max-height: none;
+        order: 2;
+      }
+      .graph-panel { order: 1; }
+      .graph-shell { min-height: 560px; }
+    }
+
+    @media (max-width: 820px) {
+      .app-shell { width: min(100vw - 12px, 100%); margin: 12px auto 18px; }
+      .hero-metrics,
+      .toolbar-grid,
+      .toggles-grid,
+      .mini-grid,
+      .analysis-grid,
+      .inline-grid,
+      .helper-grid { grid-template-columns: 1fr; }
+      .graph-toolbar { align-items: stretch; }
+      .toolbar-left,
+      .toolbar-right { width: 100%; justify-content: space-between; }
+      .graph-shell { min-height: 460px; }
+      .legend-label { max-width: 120px; }
+      .graph-status { max-width: min(240px, 62vw); }
+    }
+
+    @media (max-width: 560px) {
+      .hero { padding: 18px; border-radius: 22px; }
+      .panel { border-radius: 20px; }
+      .section,
+      .equation-card { border-radius: 18px; }
+      .graph-shell { border-radius: 20px; min-height: 400px; }
+      .graph-corner,
+      .graph-status,
+      .legend-box,
+      .analysis-overlay {
+        border-radius: 16px;
+      }
+      .graph-corner { min-width: 0; }
+      .graph-status { left: 14px; right: 14px; top: auto; bottom: 88px; max-width: none; }
+      .analysis-overlay { bottom: 148px; }
+      .input-row { grid-template-columns: 1fr; }
+      .hero-actions { width: 100%; justify-content: flex-start; }
+      .segmented { width: 100%; justify-content: center; }
+      .segmented button { flex: 1 1 auto; }
+      .status-pill { width: 100%; justify-content: center; }
+    }
+
+    @media print {
+      body { background: white; }
+      .hero-actions,
+      .sidebar,
+      .graph-toolbar,
+      .toast { display: none !important; }
+      .layout { grid-template-columns: 1fr !important; }
+      .hero, .graph-panel, .footer-note, .panel {
+        box-shadow: none !important;
+        background: white !important;
+        color: black !important;
+      }
+      .graph-shell { min-height: 600px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero panel">
+      <div class="hero-top">
+        <div class="title-wrap">
+          <span class="eyebrow">Interactive Mathematics Graph Plotter</span>
+          <h1>Plot, trace, zoom, analyze, and explore functions in a realistic visual simulator.</h1>
+          <p>
+            Enter equations naturally, compare multiple curves, inspect intercepts and turning points,
+            shade area under a curve, and interact with a polished coordinate board built fully in the browser.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <button id="themeToggle" class="button secondary" type="button">🌗 Toggle theme</button>
+          <button id="loadExamplesTop" class="button secondary" type="button">✨ Load examples</button>
+          <span id="statusPill" class="status-pill">Ready to plot</span>
+        </div>
+      </div>
+      <div class="hero-metrics">
+        <article class="metric-card">
+          <span class="metric-label">Equation input</span>
+          <strong class="metric-value">Natural syntax</strong>
+          <span class="metric-note">Supports powers, trig, logs, roots, constants, and implicit multiplication.</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Graph interaction</span>
+          <strong class="metric-value">Zoom + pan</strong>
+          <span class="metric-note">Use wheel, drag, pinch, toolbar buttons, or reset to center instantly.</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Analysis tools</span>
+          <strong class="metric-value">Smart tracing</strong>
+          <span class="metric-note">Read coordinates, tangent slope, intercepts, extrema, and shaded area estimates.</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Output</span>
+          <strong class="metric-value">Export ready</strong>
+          <span class="metric-note">Save the current graph view as PNG or print a clean classroom-friendly view.</span>
+        </article>
+      </div>
+    </header>
+
+    <section class="layout">
+      <aside class="sidebar panel" aria-label="Controls panel">
+        <section class="section">
+          <div class="stack">
+            <span class="badge">Start here</span>
+            <h2>Enter an equation</h2>
+            <p class="section-subtitle">
+              Examples: <span class="mono">x^2</span>, <span class="mono">2x + 3</span>, <span class="mono">sin(x)</span>, <span class="mono">sqrt(x)</span>, <span class="mono">log(x)</span>, <span class="mono">e^x</span>.
+            </p>
+          </div>
+          <div class="input-row">
+            <input id="equationInput" class="field mono" type="text" spellcheck="false" autocomplete="off" placeholder="Type y = x^2 or sin(x)" aria-label="Equation input" />
+            <button id="addEquationBtn" class="button primary" type="button">Add graph</button>
+          </div>
+          <div class="chip-wrap" id="exampleChips"></div>
+          <div class="small-note">Natural input tips: omit <span class="mono">y =</span> if you want, use <span class="mono">pi</span> or <span class="mono">π</span>, and enter <span class="mono">2sin(x)</span> or <span class="mono">3(x+1)</span> with implicit multiplication.</div>
+        </section>
+
+        <section class="section">
+          <h2>Equation manager</h2>
+          <p class="section-subtitle">Edit, recolor, trace, restrict domain, hide, or remove each function.</p>
+          <div id="equationList" class="equation-list"></div>
+        </section>
+
+        <section class="section">
+          <h2>Board tools</h2>
+          <div class="toolbar-grid">
+            <button id="zoomInBtn" class="button secondary" type="button">＋ Zoom in</button>
+            <button id="zoomOutBtn" class="button secondary" type="button">－ Zoom out</button>
+            <button id="resetViewBtn" class="button secondary" type="button">Reset view</button>
+            <button id="recenterBtn" class="button secondary" type="button">Recenter origin</button>
+            <button id="clearGraphsBtn" class="button danger-soft" type="button">Clear all graphs</button>
+            <button id="exportBtn" class="button success" type="button">Export PNG</button>
+          </div>
+          <div class="toggles-grid">
+            <button id="toggleGridBtn" class="toggle-button active" type="button">▦ Grid on</button>
+            <button id="toggleAxesBtn" class="toggle-button active" type="button">╋ Axes on</button>
+            <button id="toggleTangentBtn" class="toggle-button" type="button">∿ Tangent off</button>
+            <button id="toggleAreaBtn" class="toggle-button" type="button">▧ Area off</button>
+            <button id="defaultSettingsBtn" class="toggle-button" type="button">↺ Default settings</button>
+            <button id="printBtn" class="toggle-button" type="button">🖨 Print view</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Selected function analysis</h2>
+          <div class="analysis-grid">
+            <div class="labelled">
+              <label for="areaStart">Area start x₁</label>
+              <input id="areaStart" class="number-input mono" type="number" step="any" value="-2" />
+            </div>
+            <div class="labelled">
+              <label for="areaEnd">Area end x₂</label>
+              <input id="areaEnd" class="number-input mono" type="number" step="any" value="2" />
+            </div>
+          </div>
+          <button id="analyzeBtn" class="button secondary" type="button">Analyze selected graph</button>
+          <div id="analysisResults" class="analysis-results">
+            <p class="muted">Choose a traced function to display intercepts, extrema, tangent slope, and the estimated shaded area.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Quick usage tips</h2>
+          <ul class="help-list">
+            <li>Drag inside the graph to pan across the plane.</li>
+            <li>Use the mouse wheel or toolbar to zoom in and out smoothly.</li>
+            <li>Tap “Trace” on a function to follow its coordinates on hover.</li>
+            <li>Enter domain limits to show only part of a graph.</li>
+            <li>Use “Analyze selected graph” for roots, turning points, and area estimates.</li>
+          </ul>
+          <div class="divider"></div>
+          <div class="helper-grid">
+            <div>
+              <strong>Valid examples</strong>
+              <div class="tag-wrap">
+                <span class="chip"><code>x</code></span>
+                <span class="chip"><code>x^2</code></span>
+                <span class="chip"><code>x^3 - 4x</code></span>
+                <span class="chip"><code>abs(x)</code></span>
+              </div>
+            </div>
+            <div>
+              <strong>Advanced examples</strong>
+              <div class="tag-wrap">
+                <span class="chip"><code>sin(x)</code></span>
+                <span class="chip"><code>log(x)</code></span>
+                <span class="chip"><code>sqrt(x)</code></span>
+                <span class="chip"><code>e^x</code></span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="graph-panel panel" aria-label="Graphing workspace">
+        <div class="graph-toolbar">
+          <div class="toolbar-left">
+            <div class="segmented" aria-label="Zoom toolbar">
+              <button id="toolbarZoomIn" type="button" title="Zoom in">＋</button>
+              <button id="toolbarZoomOut" type="button" title="Zoom out">－</button>
+              <button id="toolbarReset" type="button" title="Reset view">⤾</button>
+            </div>
+            <span class="pill" id="viewReadout">Center (0, 0) • 60 px/unit</span>
+          </div>
+          <div class="toolbar-right">
+            <span class="pill" id="traceReadout">Hover the graph to inspect a curve</span>
+          </div>
+        </div>
+
+        <div class="graph-shell">
+          <div id="graphSurface" class="graph-surface" aria-label="Interactive graphing board">
+            <canvas id="graphCanvas"></canvas>
+            <svg id="graphOverlay" xmlns="http://www.w3.org/2000/svg" role="presentation" aria-hidden="true"></svg>
+
+            <div class="graph-corner">
+              <strong>Coordinate plane</strong>
+              <span class="small-note">Canvas renders the graph fast. SVG draws live markers and labels above it.</span>
+            </div>
+
+            <div id="graphStatus" class="graph-status">
+              <strong>Trace status</strong>
+              <span class="small-note">Move across the board to read x and y values for the selected function.</span>
+            </div>
+
+            <div id="analysisOverlay" class="analysis-overlay"></div>
+
+            <div id="emptyOverlay" class="empty-overlay show">
+              <strong style="font-size:1.1rem;">Your graph board is ready.</strong>
+              <p class="muted" style="margin:0; line-height:1.6;">Add a function from the left panel or click an example chip to see a graph instantly. The board supports multiple equations, tracing, zooming, panning, and analysis.</p>
+              <div class="chip-wrap" id="emptyStateChips"></div>
+            </div>
+
+            <div class="legend-box">
+              <strong>Active legend</strong>
+              <div id="legendWrap" class="legend-wrap"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <footer class="footer-note panel">
+      <h3>Educational note</h3>
+      <p class="muted">
+        Graphs help learners connect symbolic expressions to visual behavior. Use the tracing and analysis tools to compare growth, symmetry, oscillation, intercepts, and turning points across different function families.
+      </p>
+    </footer>
+  </main>
+
+  <div id="toast" class="toast info" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const THEME_KEY = 'graph_plotter_theme';
+      const EXAMPLE_EXPRESSIONS = ['x', '2x + 3', 'x^2', 'x^3 - 4x', 'sin(x)', 'cos(x)', 'tan(x)', 'log(x)', 'sqrt(x)', 'abs(x)', 'e^x'];
+      const COLOR_PALETTE = ['#7ea0ff', '#3dd8b4', '#ff7d91', '#f5b24d', '#b98cff', '#4fd0ff', '#ff8f50', '#83d95d'];
+      const FUNCTION_NAMES = new Set(['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sqrt', 'log', 'ln', 'abs', 'exp']);
+      const svgNS = 'http://www.w3.org/2000/svg';
+
+      const state = {
+        equations: [],
+        nextId: 1,
+        selectedTraceId: null,
+        showGrid: true,
+        showAxes: true,
+        tangentEnabled: false,
+        areaEnabled: false,
+        theme: localStorage.getItem(THEME_KEY) || 'dark',
+        toastTimer: null,
+        needsRender: true,
+        view: { centerX: 0, centerY: 0, scale: 60 },
+        graphSize: { width: 0, height: 0, dpr: 1 },
+        trace: {
+          active: false,
+          screenX: 0,
+          screenY: 0,
+          worldX: 0,
+          worldY: 0,
+          functionY: null,
+          derivative: null,
+          functionId: null,
+          visible: false,
+        },
+        analysis: {
+          selectedId: null,
+          markers: [],
+          summaryHTML: '',
+          overlayHTML: '',
+        },
+        interaction: {
+          isPanning: false,
+          panStartX: 0,
+          panStartY: 0,
+          centerStartX: 0,
+          centerStartY: 0,
+          pinchDistance: null,
+          pinchWorldMid: null,
+          pinchCenterStart: null,
+          pinchScaleStart: null,
+        },
+      };
+
+      const elements = {
+        equationInput: document.getElementById('equationInput'),
+        addEquationBtn: document.getElementById('addEquationBtn'),
+        equationList: document.getElementById('equationList'),
+        exampleChips: document.getElementById('exampleChips'),
+        emptyStateChips: document.getElementById('emptyStateChips'),
+        graphCanvas: document.getElementById('graphCanvas'),
+        graphOverlay: document.getElementById('graphOverlay'),
+        graphSurface: document.getElementById('graphSurface'),
+        legendWrap: document.getElementById('legendWrap'),
+        emptyOverlay: document.getElementById('emptyOverlay'),
+        graphStatus: document.getElementById('graphStatus'),
+        traceReadout: document.getElementById('traceReadout'),
+        viewReadout: document.getElementById('viewReadout'),
+        analysisResults: document.getElementById('analysisResults'),
+        analysisOverlay: document.getElementById('analysisOverlay'),
+        areaStart: document.getElementById('areaStart'),
+        areaEnd: document.getElementById('areaEnd'),
+        toast: document.getElementById('toast'),
+        statusPill: document.getElementById('statusPill'),
+        themeToggle: document.getElementById('themeToggle'),
+        loadExamplesTop: document.getElementById('loadExamplesTop'),
+        zoomInBtn: document.getElementById('zoomInBtn'),
+        zoomOutBtn: document.getElementById('zoomOutBtn'),
+        resetViewBtn: document.getElementById('resetViewBtn'),
+        recenterBtn: document.getElementById('recenterBtn'),
+        clearGraphsBtn: document.getElementById('clearGraphsBtn'),
+        exportBtn: document.getElementById('exportBtn'),
+        toggleGridBtn: document.getElementById('toggleGridBtn'),
+        toggleAxesBtn: document.getElementById('toggleAxesBtn'),
+        toggleTangentBtn: document.getElementById('toggleTangentBtn'),
+        toggleAreaBtn: document.getElementById('toggleAreaBtn'),
+        defaultSettingsBtn: document.getElementById('defaultSettingsBtn'),
+        printBtn: document.getElementById('printBtn'),
+        analyzeBtn: document.getElementById('analyzeBtn'),
+        toolbarZoomIn: document.getElementById('toolbarZoomIn'),
+        toolbarZoomOut: document.getElementById('toolbarZoomOut'),
+        toolbarReset: document.getElementById('toolbarReset'),
+      };
+
+      const ctx = elements.graphCanvas.getContext('2d');
+
+      function init() {
+        applyTheme(state.theme, false);
+        populateExampleChips();
+        bindUI();
+        loadStarterGraphs();
+        requestAnimationFrame(animationLoop);
+      }
+
+      function bindUI() {
+        elements.addEquationBtn.addEventListener('click', () => addEquationFromInput());
+        elements.equationInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') addEquationFromInput();
+        });
+
+        elements.themeToggle.addEventListener('click', () => {
+          const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
+          applyTheme(nextTheme, true);
+        });
+
+        elements.loadExamplesTop.addEventListener('click', () => loadExampleSet());
+        elements.zoomInBtn.addEventListener('click', () => zoomBy(1.22));
+        elements.zoomOutBtn.addEventListener('click', () => zoomBy(1 / 1.22));
+        elements.resetViewBtn.addEventListener('click', resetView);
+        elements.recenterBtn.addEventListener('click', recenterView);
+        elements.clearGraphsBtn.addEventListener('click', clearAllGraphs);
+        elements.exportBtn.addEventListener('click', exportPNG);
+        elements.toggleGridBtn.addEventListener('click', () => toggleSetting('grid'));
+        elements.toggleAxesBtn.addEventListener('click', () => toggleSetting('axes'));
+        elements.toggleTangentBtn.addEventListener('click', () => toggleSetting('tangent'));
+        elements.toggleAreaBtn.addEventListener('click', () => toggleSetting('area'));
+        elements.defaultSettingsBtn.addEventListener('click', resetDefaultSettings);
+        elements.printBtn.addEventListener('click', () => window.print());
+        elements.analyzeBtn.addEventListener('click', analyzeSelectedEquation);
+        elements.toolbarZoomIn.addEventListener('click', () => zoomBy(1.22));
+        elements.toolbarZoomOut.addEventListener('click', () => zoomBy(1 / 1.22));
+        elements.toolbarReset.addEventListener('click', resetView);
+        elements.areaStart.addEventListener('input', () => { state.needsRender = true; });
+        elements.areaEnd.addEventListener('input', () => { state.needsRender = true; });
+
+        elements.graphSurface.addEventListener('wheel', handleWheel, { passive: false });
+        elements.graphSurface.addEventListener('pointerdown', handlePointerDown);
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+        elements.graphSurface.addEventListener('mouseleave', handlePointerLeave);
+        elements.graphSurface.addEventListener('touchstart', handleTouchStart, { passive: false });
+        elements.graphSurface.addEventListener('touchmove', handleTouchMove, { passive: false });
+        elements.graphSurface.addEventListener('touchend', handleTouchEnd, { passive: false });
+        elements.graphSurface.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+        window.addEventListener('resize', () => { state.needsRender = true; });
+      }
+
+      function populateExampleChips() {
+        const makeChip = (expr) => {
+          const button = document.createElement('button');
+          button.className = 'chip';
+          button.type = 'button';
+          button.innerHTML = `<code>${escapeHtml(expr)}</code>`;
+          button.addEventListener('click', () => {
+            elements.equationInput.value = expr;
+            addEquation(expr);
+          });
+          return button;
+        };
+
+        EXAMPLE_EXPRESSIONS.forEach((expr) => {
+          elements.exampleChips.appendChild(makeChip(expr));
+          elements.emptyStateChips.appendChild(makeChip(expr));
+        });
+      }
+
+      function loadStarterGraphs() {
+        ['x', 'x^2', 'sin(x)'].forEach((expr) => addEquation(expr, { silent: true }));
+        state.selectedTraceId = state.equations[0]?.id ?? null;
+        showStatus('Starter graphs loaded. Trace a curve or add your own equation.', 'success');
+        renderEquationList();
+        updateAnalysisPanel();
+        state.needsRender = true;
+      }
+
+      function loadExampleSet() {
+        clearAllGraphs(true);
+        ['x', '2x + 3', 'x^2', 'x^3 - 4x', 'sin(x)', 'cos(x)', 'log(x)', 'sqrt(x)'].forEach((expr) => addEquation(expr, { silent: true }));
+        state.selectedTraceId = state.equations[0]?.id ?? null;
+        showStatus('Example equation set loaded.', 'success');
+        renderEquationList();
+        updateAnalysisPanel();
+        state.needsRender = true;
+      }
+
+      function addEquationFromInput() {
+        addEquation(elements.equationInput.value);
+      }
+
+      function addEquation(expression, options = {}) {
+        const { silent = false } = options;
+        try {
+          const compiled = compileExpression(expression);
+          const equation = {
+            id: state.nextId++,
+            rawInput: compiled.normalized,
+            displayLabel: `y = ${compiled.normalized}`,
+            evaluator: compiled.evaluator,
+            compiledSource: compiled.compiledSource,
+            color: COLOR_PALETTE[(state.nextId - 2) % COLOR_PALETTE.length],
+            visible: true,
+            lineWidth: 2.4,
+            dashStyle: 'solid',
+            domainMin: '',
+            domainMax: '',
+            progress: 0,
+          };
+          state.equations.push(equation);
+          if (!state.selectedTraceId) state.selectedTraceId = equation.id;
+          elements.equationInput.value = '';
+          renderEquationList();
+          updateAnalysisPanel();
+          state.needsRender = true;
+          if (!silent) showStatus(`Graph plotted successfully for ${equation.displayLabel}.`, 'success');
+        } catch (error) {
+          showStatus(error.message || 'Unable to parse that expression.', 'error');
+        }
+      }
+
+      function updateEquation(id, updates) {
+        const eq = state.equations.find((item) => item.id === id);
+        if (!eq) return;
+
+        if (Object.prototype.hasOwnProperty.call(updates, 'rawInput')) {
+          try {
+            const compiled = compileExpression(updates.rawInput);
+            eq.rawInput = compiled.normalized;
+            eq.displayLabel = `y = ${compiled.normalized}`;
+            eq.evaluator = compiled.evaluator;
+            eq.compiledSource = compiled.compiledSource;
+            eq.progress = 0;
+            showStatus(`Updated ${eq.displayLabel}.`, 'success');
+          } catch (error) {
+            showStatus(error.message || 'Invalid expression.', 'error');
+            renderEquationList();
+            return;
+          }
+        }
+
+        Object.assign(eq, updates);
+        renderEquationList();
+        updateAnalysisPanel();
+        state.needsRender = true;
+      }
+
+      function deleteEquation(id) {
+        state.equations = state.equations.filter((item) => item.id !== id);
+        if (state.selectedTraceId === id) state.selectedTraceId = state.equations[0]?.id ?? null;
+        if (state.analysis.selectedId === id) {
+          state.analysis = { selectedId: null, markers: [], summaryHTML: '', overlayHTML: '' };
+        }
+        renderEquationList();
+        updateAnalysisPanel();
+        state.needsRender = true;
+        showStatus('Graph removed.', 'info');
+      }
+
+      function clearAllGraphs(silent = false) {
+        state.equations = [];
+        state.selectedTraceId = null;
+        state.analysis = { selectedId: null, markers: [], summaryHTML: '', overlayHTML: '' };
+        state.trace.visible = false;
+        renderEquationList();
+        updateAnalysisPanel();
+        state.needsRender = true;
+        if (!silent) showStatus('All graphs cleared.', 'info');
+      }
+
+      function renderEquationList() {
+        elements.equationList.innerHTML = '';
+
+        if (!state.equations.length) {
+          const empty = document.createElement('div');
+          empty.className = 'equation-card';
+          empty.innerHTML = `
+            <div class="equation-name">
+              <strong>No graphs yet</strong>
+              <span>Add a function above to begin plotting.</span>
+            </div>
+          `;
+          elements.equationList.appendChild(empty);
+          updateLegend();
+          return;
+        }
+
+        state.equations.forEach((eq) => {
+          const card = document.createElement('article');
+          card.className = `equation-card ${state.selectedTraceId === eq.id ? 'selected' : ''}`;
+          const interceptText = quickInterceptSummary(eq);
+          const domainText = formatDomainText(eq);
+          card.innerHTML = `
+            <div class="equation-top">
+              <div class="equation-meta">
+                <span class="swatch-pill" style="background:${escapeHtml(eq.color)}"></span>
+                <div class="equation-name">
+                  <strong title="${escapeHtml(eq.displayLabel)}">${escapeHtml(eq.displayLabel)}</strong>
+                  <span>${domainText}</span>
+                </div>
+              </div>
+              <div class="equation-actions">
+                <label class="checkline" title="Toggle visibility">
+                  <input data-action="visibility" data-id="${eq.id}" type="checkbox" ${eq.visible ? 'checked' : ''} />
+                  Show
+                </label>
+                <button class="tiny-button trace ${state.selectedTraceId === eq.id ? 'active' : ''}" data-action="trace" data-id="${eq.id}" type="button">Trace</button>
+                <button class="tiny-button" data-action="delete" data-id="${eq.id}" type="button">Delete</button>
+              </div>
+            </div>
+            <div class="labelled">
+              <label for="expr-${eq.id}">Expression</label>
+              <input id="expr-${eq.id}" class="compact-field mono" data-field="expression" data-id="${eq.id}" spellcheck="false" value="${escapeAttribute(eq.rawInput)}" />
+            </div>
+            <div class="mini-grid">
+              <div class="labelled">
+                <label for="color-${eq.id}">Color</label>
+                <input id="color-${eq.id}" class="compact-field" data-field="color" data-id="${eq.id}" type="color" value="${escapeAttribute(eq.color)}" />
+              </div>
+              <div class="labelled range-wrap">
+                <label for="line-${eq.id}">Line width <span class="mono">${eq.lineWidth.toFixed(1)}</span></label>
+                <input id="line-${eq.id}" data-field="lineWidth" data-id="${eq.id}" type="range" min="1" max="6" step="0.1" value="${eq.lineWidth}" />
+              </div>
+              <div class="labelled">
+                <label for="dash-${eq.id}">Style</label>
+                <select id="dash-${eq.id}" class="select" data-field="dashStyle" data-id="${eq.id}">
+                  <option value="solid" ${eq.dashStyle === 'solid' ? 'selected' : ''}>Solid</option>
+                  <option value="dashed" ${eq.dashStyle === 'dashed' ? 'selected' : ''}>Dashed</option>
+                </select>
+              </div>
+            </div>
+            <div class="inline-grid">
+              <div class="labelled">
+                <label for="dmin-${eq.id}">Domain min</label>
+                <input id="dmin-${eq.id}" class="number-input mono" data-field="domainMin" data-id="${eq.id}" type="number" step="any" value="${escapeAttribute(eq.domainMin)}" placeholder="e.g. -5" />
+              </div>
+              <div class="labelled">
+                <label for="dmax-${eq.id}">Domain max</label>
+                <input id="dmax-${eq.id}" class="number-input mono" data-field="domainMax" data-id="${eq.id}" type="number" step="any" value="${escapeAttribute(eq.domainMax)}" placeholder="e.g. 8" />
+              </div>
+            </div>
+            <div class="equation-stats">
+              <span class="small-note">Quick insight: ${interceptText}</span>
+            </div>
+          `;
+          elements.equationList.appendChild(card);
+        });
+
+        elements.equationList.querySelectorAll('[data-action="visibility"]').forEach((input) => {
+          input.addEventListener('change', (event) => {
+            updateEquation(Number(event.currentTarget.dataset.id), { visible: event.currentTarget.checked });
+          });
+        });
+
+        elements.equationList.querySelectorAll('[data-action="trace"]').forEach((button) => {
+          button.addEventListener('click', (event) => {
+            state.selectedTraceId = Number(event.currentTarget.dataset.id);
+            renderEquationList();
+            updateAnalysisPanel();
+            state.needsRender = true;
+          });
+        });
+
+        elements.equationList.querySelectorAll('[data-action="delete"]').forEach((button) => {
+          button.addEventListener('click', (event) => deleteEquation(Number(event.currentTarget.dataset.id)));
+        });
+
+        elements.equationList.querySelectorAll('[data-field]').forEach((control) => {
+          const id = Number(control.dataset.id);
+          const field = control.dataset.field;
+          const commit = () => {
+            if (field === 'expression') updateEquation(id, { rawInput: control.value });
+            if (field === 'color') updateEquation(id, { color: control.value });
+            if (field === 'lineWidth') updateEquation(id, { lineWidth: Number(control.value) });
+            if (field === 'dashStyle') updateEquation(id, { dashStyle: control.value });
+            if (field === 'domainMin') updateEquation(id, { domainMin: control.value.trim() });
+            if (field === 'domainMax') updateEquation(id, { domainMax: control.value.trim() });
+          };
+
+          if (field === 'lineWidth' || field === 'color' || field === 'dashStyle') {
+            control.addEventListener('input', commit);
+            control.addEventListener('change', commit);
+          } else {
+            control.addEventListener('change', commit);
+            control.addEventListener('blur', commit);
+            if (field === 'expression') {
+              control.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  control.blur();
+                }
+              });
+            }
+          }
+        });
+
+        updateLegend();
+      }
+
+      function toggleSetting(type) {
+        if (type === 'grid') state.showGrid = !state.showGrid;
+        if (type === 'axes') state.showAxes = !state.showAxes;
+        if (type === 'tangent') state.tangentEnabled = !state.tangentEnabled;
+        if (type === 'area') state.areaEnabled = !state.areaEnabled;
+        syncToggleButtons();
+        state.needsRender = true;
+      }
+
+      function syncToggleButtons() {
+        elements.toggleGridBtn.classList.toggle('active', state.showGrid);
+        elements.toggleGridBtn.textContent = state.showGrid ? '▦ Grid on' : '▦ Grid off';
+        elements.toggleAxesBtn.classList.toggle('active', state.showAxes);
+        elements.toggleAxesBtn.textContent = state.showAxes ? '╋ Axes on' : '╋ Axes off';
+        elements.toggleTangentBtn.classList.toggle('active', state.tangentEnabled);
+        elements.toggleTangentBtn.textContent = state.tangentEnabled ? '∿ Tangent on' : '∿ Tangent off';
+        elements.toggleAreaBtn.classList.toggle('active', state.areaEnabled);
+        elements.toggleAreaBtn.textContent = state.areaEnabled ? '▧ Area on' : '▧ Area off';
+      }
+
+      function resetDefaultSettings() {
+        state.showGrid = true;
+        state.showAxes = true;
+        state.tangentEnabled = false;
+        state.areaEnabled = false;
+        elements.areaStart.value = -2;
+        elements.areaEnd.value = 2;
+        state.analysis = { selectedId: null, markers: [], summaryHTML: '', overlayHTML: '' };
+        syncToggleButtons();
+        resetView();
+        showStatus('Default graph settings restored.', 'info');
+      }
+
+      function applyTheme(theme, toast = true) {
+        state.theme = theme;
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem(THEME_KEY, theme);
+        state.needsRender = true;
+        if (toast) showStatus(`${theme === 'dark' ? 'Dark' : 'Light'} mode activated.`, 'info');
+      }
+
+      function zoomBy(factor, anchorScreen = null) {
+        const oldScale = state.view.scale;
+        const nextScale = clamp(oldScale * factor, 14, 420);
+        if (nextScale === oldScale) return;
+
+        const width = state.graphSize.width || elements.graphSurface.clientWidth;
+        const height = state.graphSize.height || elements.graphSurface.clientHeight;
+        const anchor = anchorScreen || { x: width / 2, y: height / 2 };
+        const before = screenToWorld(anchor.x, anchor.y);
+        state.view.scale = nextScale;
+        const after = screenToWorld(anchor.x, anchor.y);
+        state.view.centerX += before.x - after.x;
+        state.view.centerY += before.y - after.y;
+        state.needsRender = true;
+      }
+
+      function resetView() {
+        state.view.centerX = 0;
+        state.view.centerY = 0;
+        state.view.scale = 60;
+        state.needsRender = true;
+      }
+
+      function recenterView() {
+        state.view.centerX = 0;
+        state.view.centerY = 0;
+        state.needsRender = true;
+      }
+
+      function handleWheel(event) {
+        event.preventDefault();
+        const rect = elements.graphSurface.getBoundingClientRect();
+        const anchor = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+        zoomBy(factor, anchor);
+      }
+
+      function handlePointerDown(event) {
+        if (event.pointerType === 'touch') return;
+        const rect = elements.graphSurface.getBoundingClientRect();
+        state.interaction.isPanning = true;
+        state.interaction.panStartX = event.clientX - rect.left;
+        state.interaction.panStartY = event.clientY - rect.top;
+        state.interaction.centerStartX = state.view.centerX;
+        state.interaction.centerStartY = state.view.centerY;
+        elements.graphSurface.setPointerCapture?.(event.pointerId);
+      }
+
+      function handlePointerMove(event) {
+        const rect = elements.graphSurface.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+        const inside = x >= 0 && x <= rect.width && y >= 0 && y <= rect.height;
+
+        if (state.interaction.isPanning) {
+          const dx = x - state.interaction.panStartX;
+          const dy = y - state.interaction.panStartY;
+          state.view.centerX = state.interaction.centerStartX - dx / state.view.scale;
+          state.view.centerY = state.interaction.centerStartY + dy / state.view.scale;
+          state.needsRender = true;
+        }
+
+        if (!inside && !state.interaction.isPanning) return;
+        updateTraceFromScreen(x, y);
+      }
+
+      function handlePointerUp() {
+        state.interaction.isPanning = false;
+      }
+
+      function handlePointerLeave() {
+        state.trace.visible = false;
+        state.trace.active = false;
+        elements.traceReadout.textContent = 'Hover the graph to inspect a curve';
+        elements.graphStatus.innerHTML = '<strong>Trace status</strong><span class="small-note">Move across the board to read x and y values for the selected function.</span>';
+        state.needsRender = true;
+      }
+
+      function handleTouchStart(event) {
+        if (event.touches.length === 1) {
+          const touch = event.touches[0];
+          const rect = elements.graphSurface.getBoundingClientRect();
+          state.interaction.isPanning = true;
+          state.interaction.panStartX = touch.clientX - rect.left;
+          state.interaction.panStartY = touch.clientY - rect.top;
+          state.interaction.centerStartX = state.view.centerX;
+          state.interaction.centerStartY = state.view.centerY;
+        }
+
+        if (event.touches.length === 2) {
+          event.preventDefault();
+          const rect = elements.graphSurface.getBoundingClientRect();
+          const [a, b] = event.touches;
+          const midX = (a.clientX + b.clientX) / 2 - rect.left;
+          const midY = (a.clientY + b.clientY) / 2 - rect.top;
+          state.interaction.isPanning = false;
+          state.interaction.pinchDistance = distanceBetweenTouches(a, b);
+          state.interaction.pinchScaleStart = state.view.scale;
+          state.interaction.pinchWorldMid = screenToWorld(midX, midY);
+          state.interaction.pinchCenterStart = { x: state.view.centerX, y: state.view.centerY };
+        }
+      }
+
+      function handleTouchMove(event) {
+        const rect = elements.graphSurface.getBoundingClientRect();
+        if (event.touches.length === 1 && state.interaction.isPanning) {
+          event.preventDefault();
+          const touch = event.touches[0];
+          const x = touch.clientX - rect.left;
+          const y = touch.clientY - rect.top;
+          const dx = x - state.interaction.panStartX;
+          const dy = y - state.interaction.panStartY;
+          state.view.centerX = state.interaction.centerStartX - dx / state.view.scale;
+          state.view.centerY = state.interaction.centerStartY + dy / state.view.scale;
+          updateTraceFromScreen(x, y);
+          state.needsRender = true;
+        }
+
+        if (event.touches.length === 2 && state.interaction.pinchDistance) {
+          event.preventDefault();
+          const [a, b] = event.touches;
+          const newDistance = distanceBetweenTouches(a, b);
+          if (!newDistance) return;
+          const factor = newDistance / state.interaction.pinchDistance;
+          state.view.scale = clamp(state.interaction.pinchScaleStart * factor, 14, 420);
+          const midX = (a.clientX + b.clientX) / 2 - rect.left;
+          const midY = (a.clientY + b.clientY) / 2 - rect.top;
+          const before = state.interaction.pinchWorldMid;
+          const after = screenToWorld(midX, midY);
+          state.view.centerX += before.x - after.x;
+          state.view.centerY += before.y - after.y;
+          updateTraceFromScreen(midX, midY);
+          state.needsRender = true;
+        }
+      }
+
+      function handleTouchEnd(event) {
+        if (event.touches.length === 0) {
+          state.interaction.isPanning = false;
+          state.interaction.pinchDistance = null;
+        } else if (event.touches.length === 1) {
+          state.interaction.pinchDistance = null;
+          const touch = event.touches[0];
+          const rect = elements.graphSurface.getBoundingClientRect();
+          state.interaction.isPanning = true;
+          state.interaction.panStartX = touch.clientX - rect.left;
+          state.interaction.panStartY = touch.clientY - rect.top;
+          state.interaction.centerStartX = state.view.centerX;
+          state.interaction.centerStartY = state.view.centerY;
+        }
+      }
+
+      function distanceBetweenTouches(a, b) {
+        return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      }
+
+      function updateTraceFromScreen(screenX, screenY) {
+        const world = screenToWorld(screenX, screenY);
+        state.trace.active = true;
+        state.trace.screenX = screenX;
+        state.trace.screenY = screenY;
+        state.trace.worldX = world.x;
+        state.trace.worldY = world.y;
+
+        const eq = getSelectedTraceEquation();
+        if (!eq || !eq.visible) {
+          state.trace.visible = false;
+          elements.traceReadout.textContent = `Cursor: (${formatNumber(world.x)}, ${formatNumber(world.y)})`;
+          state.needsRender = true;
+          return;
+        }
+
+        const y = safeEvaluate(eq, world.x);
+        if (!Number.isFinite(y)) {
+          state.trace.visible = false;
+          elements.traceReadout.textContent = `x = ${formatNumber(world.x)} • function undefined here`;
+          elements.graphStatus.innerHTML = `<strong>${escapeHtml(eq.displayLabel)}</strong><span class="small-note">The selected function is outside its valid range at x = ${escapeHtml(formatNumber(world.x))}.</span>`;
+          state.needsRender = true;
+          return;
+        }
+
+        const derivative = approximateDerivative(eq, world.x);
+        state.trace.functionY = y;
+        state.trace.derivative = derivative;
+        state.trace.functionId = eq.id;
+        state.trace.visible = true;
+        elements.traceReadout.textContent = `x = ${formatNumber(world.x)} • y = ${formatNumber(y)}`;
+        elements.graphStatus.innerHTML = `
+          <strong>${escapeHtml(eq.displayLabel)}</strong>
+          <span class="small-note">x = ${escapeHtml(formatNumber(world.x))}, y = ${escapeHtml(formatNumber(y))}${Number.isFinite(derivative) ? `, slope ≈ ${escapeHtml(formatNumber(derivative))}` : ''}</span>
+        `;
+        state.needsRender = true;
+      }
+
+      function getSelectedTraceEquation() {
+        const selected = state.equations.find((eq) => eq.id === state.selectedTraceId && eq.visible);
+        return selected || state.equations.find((eq) => eq.visible) || null;
+      }
+
+      function animationLoop() {
+        resizeGraphSurface();
+        let animating = false;
+        state.equations.forEach((eq) => {
+          if (eq.progress < 1) {
+            eq.progress = Math.min(1, eq.progress + 0.045);
+            animating = true;
+          }
+        });
+
+        if (state.needsRender || animating || state.trace.visible) {
+          renderGraph();
+          state.needsRender = false;
+        }
+        requestAnimationFrame(animationLoop);
+      }
+
+      function resizeGraphSurface() {
+        const rect = elements.graphSurface.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const width = Math.round(rect.width);
+        const height = Math.round(rect.height);
+        if (width === state.graphSize.width && height === state.graphSize.height && dpr === state.graphSize.dpr) return;
+
+        state.graphSize = { width, height, dpr };
+        elements.graphCanvas.width = Math.round(width * dpr);
+        elements.graphCanvas.height = Math.round(height * dpr);
+        elements.graphCanvas.style.width = `${width}px`;
+        elements.graphCanvas.style.height = `${height}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        elements.graphOverlay.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        state.needsRender = true;
+      }
+
+      function renderGraph() {
+        const { width, height } = state.graphSize;
+        if (!width || !height) return;
+
+        const css = getComputedStyle(document.documentElement);
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = css.getPropertyValue('--graph-bg').trim();
+        ctx.fillRect(0, 0, width, height);
+
+        if (state.showGrid) drawGrid(ctx, width, height);
+        if (state.showAxes) drawAxes(ctx, width, height);
+        drawAreaIfNeeded(ctx);
+        drawFunctions(ctx, width, height);
+        updateSvgOverlay(width, height);
+        updateViewReadouts();
+        updateEmptyState();
+      }
+
+      function drawGrid(context, width, height) {
+        const css = getComputedStyle(document.documentElement);
+        const majorStep = chooseGridStep();
+        const minorStep = majorStep / 5;
+        const bounds = visibleWorldBounds();
+
+        context.save();
+        context.lineWidth = 1;
+        context.beginPath();
+        context.strokeStyle = css.getPropertyValue('--grid-minor').trim();
+        for (let x = Math.floor(bounds.minX / minorStep) * minorStep; x <= bounds.maxX; x += minorStep) {
+          if (approximatelyMultiple(x, majorStep)) continue;
+          const sx = worldToScreen(x, 0).x;
+          context.moveTo(sx, 0);
+          context.lineTo(sx, height);
+        }
+        for (let y = Math.floor(bounds.minY / minorStep) * minorStep; y <= bounds.maxY; y += minorStep) {
+          if (approximatelyMultiple(y, majorStep)) continue;
+          const sy = worldToScreen(0, y).y;
+          context.moveTo(0, sy);
+          context.lineTo(width, sy);
+        }
+        context.stroke();
+
+        context.beginPath();
+        context.strokeStyle = css.getPropertyValue('--grid-major').trim();
+        for (let x = Math.floor(bounds.minX / majorStep) * majorStep; x <= bounds.maxX; x += majorStep) {
+          const sx = worldToScreen(x, 0).x;
+          context.moveTo(sx, 0);
+          context.lineTo(sx, height);
+        }
+        for (let y = Math.floor(bounds.minY / majorStep) * majorStep; y <= bounds.maxY; y += majorStep) {
+          const sy = worldToScreen(0, y).y;
+          context.moveTo(0, sy);
+          context.lineTo(width, sy);
+        }
+        context.stroke();
+        context.restore();
+      }
+
+      function drawAxes(context, width, height) {
+        const css = getComputedStyle(document.documentElement);
+        const originScreen = worldToScreen(0, 0);
+        const axisColor = css.getPropertyValue('--axis').trim();
+        const originColor = css.getPropertyValue('--origin').trim();
+        const majorStep = chooseGridStep();
+        const bounds = visibleWorldBounds();
+
+        context.save();
+        context.strokeStyle = axisColor;
+        context.lineWidth = 1.5;
+        context.beginPath();
+        context.moveTo(0, originScreen.y);
+        context.lineTo(width, originScreen.y);
+        context.moveTo(originScreen.x, 0);
+        context.lineTo(originScreen.x, height);
+        context.stroke();
+
+        context.fillStyle = axisColor;
+        context.font = '12px Inter, sans-serif';
+        context.textAlign = 'center';
+        context.textBaseline = 'top';
+        for (let x = Math.floor(bounds.minX / majorStep) * majorStep; x <= bounds.maxX; x += majorStep) {
+          const sx = worldToScreen(x, 0).x;
+          context.beginPath();
+          context.moveTo(sx, originScreen.y - 6);
+          context.lineTo(sx, originScreen.y + 6);
+          context.stroke();
+          if (Math.abs(x) > 1e-8 && sx >= 18 && sx <= width - 18) {
+            context.fillText(formatAxisLabel(x), sx, clamp(originScreen.y + 8, 6, height - 18));
+          }
+        }
+
+        context.save();
+        context.textAlign = 'left';
+        context.textBaseline = 'middle';
+        for (let y = Math.floor(bounds.minY / majorStep) * majorStep; y <= bounds.maxY; y += majorStep) {
+          const sy = worldToScreen(0, y).y;
+          context.beginPath();
+          context.moveTo(originScreen.x - 6, sy);
+          context.lineTo(originScreen.x + 6, sy);
+          context.stroke();
+          if (Math.abs(y) > 1e-8 && sy >= 18 && sy <= height - 18) {
+            context.fillText(formatAxisLabel(y), clamp(originScreen.x + 8, 8, width - 50), sy);
+          }
+        }
+        context.restore();
+
+        context.fillStyle = originColor;
+        context.beginPath();
+        context.arc(originScreen.x, originScreen.y, 4, 0, Math.PI * 2);
+        context.fill();
+
+        context.fillStyle = axisColor;
+        context.font = '700 12px Inter, sans-serif';
+        context.fillText('0', originScreen.x + 8, originScreen.y + 8);
+        context.restore();
+      }
+
+      function drawAreaIfNeeded(context) {
+        if (!state.areaEnabled) return;
+        const eq = getSelectedTraceEquation();
+        if (!eq || !eq.visible) return;
+
+        const a = Number(elements.areaStart.value);
+        const b = Number(elements.areaEnd.value);
+        if (!Number.isFinite(a) || !Number.isFinite(b) || a === b) return;
+
+        const start = Math.min(a, b);
+        const end = Math.max(a, b);
+        const css = getComputedStyle(document.documentElement);
+        const fill = hexToRgba(eq.color, 0.18) || css.getPropertyValue('--muted-chip').trim();
+        const stroke = hexToRgba(eq.color, 0.85) || eq.color;
+        const steps = Math.max(60, Math.round(Math.abs(end - start) * state.view.scale * 0.4));
+
+        context.save();
+        context.beginPath();
+        let moved = false;
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const x = start + (end - start) * t;
+          if (!withinDomain(eq, x)) continue;
+          const y = safeEvaluate(eq, x);
+          if (!Number.isFinite(y)) continue;
+          const point = worldToScreen(x, y);
+          if (!moved) {
+            context.moveTo(point.x, worldToScreen(start, 0).y);
+            context.lineTo(point.x, point.y);
+            moved = true;
+          } else {
+            context.lineTo(point.x, point.y);
+          }
+        }
+        if (!moved) {
+          context.restore();
+          return;
+        }
+        context.lineTo(worldToScreen(end, 0).x, worldToScreen(end, 0).y);
+        context.closePath();
+        context.fillStyle = fill;
+        context.strokeStyle = stroke;
+        context.lineWidth = 1.25;
+        context.fill();
+        context.stroke();
+        context.restore();
+      }
+
+      function drawFunctions(context, width) {
+        state.equations.forEach((eq) => {
+          if (!eq.visible) return;
+          context.save();
+          context.strokeStyle = eq.color;
+          context.lineWidth = eq.lineWidth;
+          context.lineJoin = 'round';
+          context.lineCap = 'round';
+          context.shadowColor = hexToRgba(eq.color, 0.24) || 'transparent';
+          context.shadowBlur = 10;
+          context.setLineDash(eq.dashStyle === 'dashed' ? [10, 8] : []);
+
+          const maxScreenX = width * eq.progress;
+          const stepPx = 1.25;
+          let started = false;
+          let prevSy = null;
+
+          context.beginPath();
+          for (let sx = 0; sx <= maxScreenX; sx += stepPx) {
+            const x = screenToWorld(sx, 0).x;
+            if (!withinDomain(eq, x)) {
+              started = false;
+              prevSy = null;
+              continue;
+            }
+            const y = safeEvaluate(eq, x);
+            if (!Number.isFinite(y) || Math.abs(y) > 1e6) {
+              started = false;
+              prevSy = null;
+              continue;
+            }
+            const sy = worldToScreen(x, y).y;
+            if (!Number.isFinite(sy) || Math.abs(sy) > 1e6) {
+              started = false;
+              prevSy = null;
+              continue;
+            }
+            const jump = prevSy !== null ? Math.abs(sy - prevSy) : 0;
+            if (!started || jump > state.graphSize.height * 0.7) {
+              context.moveTo(sx, sy);
+              started = true;
+            } else {
+              context.lineTo(sx, sy);
+            }
+            prevSy = sy;
+          }
+          context.stroke();
+          context.restore();
+        });
+      }
+
+      function updateSvgOverlay(width, height) {
+        elements.graphOverlay.innerHTML = '';
+
+        if (state.trace.visible) {
+          const eq = state.equations.find((item) => item.id === state.trace.functionId);
+          if (eq) {
+            const point = worldToScreen(state.trace.worldX, state.trace.functionY);
+            if (point.x >= -40 && point.x <= width + 40 && point.y >= -40 && point.y <= height + 40) {
+              appendLine(point.x, 0, point.x, height, 'trace-line');
+              appendCircle(point.x, point.y, 6, eq.color, 'trace-dot');
+              appendLabel(point.x + 12, point.y - 44, `${formatNumber(state.trace.worldX)}, ${formatNumber(state.trace.functionY)}`, eq.color, false);
+
+              if (state.tangentEnabled && Number.isFinite(state.trace.derivative)) {
+                const tangent = tangentEndpoints(state.trace.worldX, state.trace.functionY, state.trace.derivative);
+                if (tangent) appendLine(tangent.x1, tangent.y1, tangent.x2, tangent.y2, 'trace-line', eq.color, '4 6');
+              }
+            }
+          }
+        }
+
+        state.analysis.markers.forEach((marker) => {
+          const point = worldToScreen(marker.x, marker.y);
+          if (point.x < -50 || point.x > width + 50 || point.y < -50 || point.y > height + 50) return;
+          appendCircle(point.x, point.y, 5.5, marker.color, 'marker-dot');
+          appendLabel(point.x + 10, point.y - 34, marker.label, marker.color, true);
+        });
+      }
+
+      function appendLine(x1, y1, x2, y2, className, stroke = null, dash = null) {
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+        line.setAttribute('class', className);
+        if (stroke) line.setAttribute('stroke', stroke);
+        if (dash) line.setAttribute('stroke-dasharray', dash);
+        elements.graphOverlay.appendChild(line);
+      }
+
+      function appendCircle(cx, cy, r, fill, className) {
+        const circle = document.createElementNS(svgNS, 'circle');
+        circle.setAttribute('cx', cx);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', r);
+        circle.setAttribute('fill', fill);
+        circle.setAttribute('class', className);
+        elements.graphOverlay.appendChild(circle);
+      }
+
+      function appendLabel(x, y, text, accent, markerLabel) {
+        const group = document.createElementNS(svgNS, 'g');
+        const textEl = document.createElementNS(svgNS, 'text');
+        const words = text;
+        textEl.setAttribute('x', x + 11);
+        textEl.setAttribute('y', y + 18);
+        textEl.setAttribute('class', markerLabel ? 'marker-text' : 'trace-text');
+        textEl.textContent = words;
+        group.appendChild(textEl);
+        elements.graphOverlay.appendChild(group);
+        const box = textEl.getBBox();
+        const rect = document.createElementNS(svgNS, 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', box.width + 22);
+        rect.setAttribute('height', box.height + 14);
+        rect.setAttribute('fill', 'transparent');
+        rect.setAttribute('class', markerLabel ? 'marker-label-bg' : 'trace-label-bg');
+        rect.style.stroke = accent;
+        group.insertBefore(rect, textEl);
+      }
+
+      function tangentEndpoints(x0, y0, slope) {
+        if (!Number.isFinite(slope)) return null;
+        const bounds = visibleWorldBounds();
+        const points = [];
+        const tryPoint = (x, y) => {
+          if (Number.isFinite(x) && Number.isFinite(y) && x >= bounds.minX - 0.1 && x <= bounds.maxX + 0.1 && y >= bounds.minY - 0.1 && y <= bounds.maxY + 0.1) {
+            points.push(worldToScreen(x, y));
+          }
+        };
+
+        tryPoint(bounds.minX, y0 + slope * (bounds.minX - x0));
+        tryPoint(bounds.maxX, y0 + slope * (bounds.maxX - x0));
+        if (Math.abs(slope) > 1e-9) {
+          tryPoint(x0 + (bounds.minY - y0) / slope, bounds.minY);
+          tryPoint(x0 + (bounds.maxY - y0) / slope, bounds.maxY);
+        }
+        if (points.length < 2) return null;
+        return { x1: points[0].x, y1: points[0].y, x2: points[1].x, y2: points[1].y };
+      }
+
+      function updateViewReadouts() {
+        elements.viewReadout.textContent = `Center (${formatNumber(state.view.centerX)}, ${formatNumber(state.view.centerY)}) • ${formatNumber(state.view.scale)} px/unit`;
+      }
+
+      function updateLegend() {
+        elements.legendWrap.innerHTML = '';
+        const visible = state.equations.filter((eq) => eq.visible);
+        if (!visible.length) {
+          const fallback = document.createElement('span');
+          fallback.className = 'small-note';
+          fallback.textContent = 'No active functions yet.';
+          elements.legendWrap.appendChild(fallback);
+          return;
+        }
+        visible.forEach((eq) => {
+          const item = document.createElement('span');
+          item.className = 'legend-item';
+          item.innerHTML = `
+            <span class="legend-swatch" style="background:${escapeHtml(eq.color)}"></span>
+            <span class="legend-label" title="${escapeHtml(eq.displayLabel)}">${escapeHtml(eq.rawInput)}</span>
+          `;
+          elements.legendWrap.appendChild(item);
+        });
+      }
+
+      function updateEmptyState() {
+        elements.emptyOverlay.classList.toggle('show', state.equations.length === 0);
+      }
+
+      function analyzeSelectedEquation() {
+        const eq = getSelectedTraceEquation();
+        if (!eq) {
+          showStatus('Select or add a visible graph before running analysis.', 'warning');
+          return;
+        }
+
+        const bounds = visibleWorldBounds();
+        let left = bounds.minX;
+        let right = bounds.maxX;
+
+        if (eq.domainMin !== '' && Number.isFinite(Number(eq.domainMin))) left = Math.max(left, Number(eq.domainMin));
+        if (eq.domainMax !== '' && Number.isFinite(Number(eq.domainMax))) right = Math.min(right, Number(eq.domainMax));
+        if (!(right > left)) {
+          showStatus('This function has an invalid domain range for analysis.', 'error');
+          return;
+        }
+
+        const sampleCount = 1200;
+        const roots = [];
+        const extrema = [];
+        const markers = [];
+        let yIntercept = null;
+        let prevX = null;
+        let prevY = null;
+        let prevFinite = false;
+        const samples = [];
+
+        for (let i = 0; i <= sampleCount; i++) {
+          const x = left + ((right - left) * i) / sampleCount;
+          const y = safeEvaluate(eq, x);
+          const finite = Number.isFinite(y);
+          if (finite) samples.push({ x, y });
+
+          if (finite && Math.abs(x) < (right - left) / sampleCount) yIntercept = { x: 0, y: safeEvaluate(eq, 0) };
+
+          if (finite && prevFinite) {
+            if (y === 0 || prevY === 0 || y * prevY < 0) {
+              const root = bisectRoot(eq, prevX, x);
+              if (root && !roots.some((item) => Math.abs(item.x - root.x) < 0.06)) roots.push(root);
+            }
+          }
+
+          prevX = x;
+          prevY = y;
+          prevFinite = finite;
+        }
+
+        for (let i = 1; i < samples.length - 1; i++) {
+          const a = samples[i - 1];
+          const b = samples[i];
+          const c = samples[i + 1];
+          if (b.y > a.y && b.y > c.y) {
+            const refined = refineExtremum(eq, b.x, 'max', left, right);
+            if (refined && !extrema.some((item) => Math.abs(item.x - refined.x) < 0.08)) extrema.push({ ...refined, kind: 'Local max' });
+          }
+          if (b.y < a.y && b.y < c.y) {
+            const refined = refineExtremum(eq, b.x, 'min', left, right);
+            if (refined && !extrema.some((item) => Math.abs(item.x - refined.x) < 0.08)) extrema.push({ ...refined, kind: 'Local min' });
+          }
+        }
+
+        if (yIntercept && Number.isFinite(yIntercept.y)) {
+          markers.push({ x: 0, y: yIntercept.y, label: `y-int (${formatNumber(yIntercept.y)})`, color: eq.color });
+        }
+
+        roots.slice(0, 6).forEach((root, index) => {
+          markers.push({ x: root.x, y: root.y, label: `x-int ${index + 1}: ${formatNumber(root.x)}`, color: eq.color });
+        });
+
+        extrema.slice(0, 6).forEach((point) => {
+          markers.push({ x: point.x, y: point.y, label: `${point.kind}: (${formatNumber(point.x)}, ${formatNumber(point.y)})`, color: eq.color });
+        });
+
+        const tangentAtTrace = state.trace.visible && state.trace.functionId === eq.id && Number.isFinite(state.trace.derivative)
+          ? `Slope at traced x ≈ ${formatNumber(state.trace.derivative)}`
+          : 'Move your cursor over the graph to read a tangent slope.';
+
+        const areaText = state.areaEnabled ? estimateArea(eq) : 'Turn on area shading to estimate definite area between x₁ and x₂.';
+
+        const summary = `
+          <strong>${escapeHtml(eq.displayLabel)}</strong>
+          <ul>
+            <li>${roots.length ? `${roots.length} approximate x-intercept${roots.length > 1 ? 's' : ''}: ${roots.slice(0, 4).map((root) => formatNumber(root.x)).join(', ')}` : 'No x-intercepts detected in the current view.'}</li>
+            <li>${Number.isFinite(yIntercept?.y) ? `y-intercept ≈ (${formatNumber(0)}, ${formatNumber(yIntercept.y)})` : 'No valid y-intercept found in the current domain.'}</li>
+            <li>${extrema.length ? `Turning points: ${extrema.slice(0, 4).map((point) => `${point.kind.toLowerCase()} at (${formatNumber(point.x)}, ${formatNumber(point.y)})`).join('; ')}` : 'No local extrema detected in the current view.'}</li>
+            <li>${escapeHtml(tangentAtTrace)}</li>
+            <li>${escapeHtml(areaText)}</li>
+          </ul>
+        `;
+
+        state.analysis.selectedId = eq.id;
+        state.analysis.markers = markers;
+        state.analysis.summaryHTML = summary;
+        state.analysis.overlayHTML = `
+          <strong>Analysis markers shown</strong>
+          <span class="small-note">${escapeHtml(`${roots.length} roots • ${extrema.length} extrema • ${Number.isFinite(yIntercept?.y) ? 'y-intercept found' : 'no y-intercept'}`)}</span>
+        `;
+        updateAnalysisPanel();
+        state.needsRender = true;
+        showStatus('Analysis generated for the selected graph.', 'success');
+      }
+
+      function updateAnalysisPanel() {
+        elements.analysisResults.innerHTML = state.analysis.summaryHTML || '<p class="muted">Choose a traced function to display intercepts, extrema, tangent slope, and the estimated shaded area.</p>';
+        elements.analysisOverlay.innerHTML = state.analysis.overlayHTML || '';
+        elements.analysisOverlay.classList.toggle('show', Boolean(state.analysis.overlayHTML));
+      }
+
+      function estimateArea(eq) {
+        const a = Number(elements.areaStart.value);
+        const b = Number(elements.areaEnd.value);
+        if (!Number.isFinite(a) || !Number.isFinite(b) || a === b) return 'Area range is not valid.';
+        const start = Math.min(a, b);
+        const end = Math.max(a, b);
+        const steps = 600;
+        let area = 0;
+        let validSegments = 0;
+        for (let i = 0; i < steps; i++) {
+          const x1 = start + ((end - start) * i) / steps;
+          const x2 = start + ((end - start) * (i + 1)) / steps;
+          if (!withinDomain(eq, x1) || !withinDomain(eq, x2)) continue;
+          const y1 = safeEvaluate(eq, x1);
+          const y2 = safeEvaluate(eq, x2);
+          if (!Number.isFinite(y1) || !Number.isFinite(y2)) continue;
+          area += ((y1 + y2) / 2) * (x2 - x1);
+          validSegments++;
+        }
+        if (!validSegments) return 'Area could not be estimated on the current interval.';
+        return `Estimated signed area from ${formatNumber(start)} to ${formatNumber(end)} ≈ ${formatNumber(area)} square units.`;
+      }
+
+      function quickInterceptSummary(eq) {
+        const y0 = safeEvaluate(eq, 0);
+        const yText = Number.isFinite(y0) ? `y-intercept ≈ ${formatNumber(y0)}` : 'no valid y-intercept';
+        return `${yText}; ${eq.visible ? 'visible on graph' : 'currently hidden'}.`;
+      }
+
+      function formatDomainText(eq) {
+        const hasMin = eq.domainMin !== '' && Number.isFinite(Number(eq.domainMin));
+        const hasMax = eq.domainMax !== '' && Number.isFinite(Number(eq.domainMax));
+        if (!hasMin && !hasMax) return 'Domain: all valid x-values';
+        return `Domain: ${hasMin ? formatNumber(Number(eq.domainMin)) : '−∞'} ≤ x ≤ ${hasMax ? formatNumber(Number(eq.domainMax)) : '∞'}`;
+      }
+
+      function chooseGridStep() {
+        const targetPx = 86;
+        const raw = targetPx / state.view.scale;
+        const exponent = Math.floor(Math.log10(raw || 1));
+        const base = raw / Math.pow(10, exponent);
+        let factor = 1;
+        if (base > 5) factor = 10;
+        else if (base > 2) factor = 5;
+        else if (base > 1) factor = 2;
+        return factor * Math.pow(10, exponent);
+      }
+
+      function visibleWorldBounds() {
+        const { width, height } = state.graphSize;
+        const topLeft = screenToWorld(0, 0);
+        const bottomRight = screenToWorld(width, height);
+        return {
+          minX: topLeft.x,
+          maxX: bottomRight.x,
+          minY: bottomRight.y,
+          maxY: topLeft.y,
+        };
+      }
+
+      function worldToScreen(x, y) {
+        return {
+          x: state.graphSize.width / 2 + (x - state.view.centerX) * state.view.scale,
+          y: state.graphSize.height / 2 - (y - state.view.centerY) * state.view.scale,
+        };
+      }
+
+      function screenToWorld(x, y) {
+        return {
+          x: (x - state.graphSize.width / 2) / state.view.scale + state.view.centerX,
+          y: (state.graphSize.height / 2 - y) / state.view.scale + state.view.centerY,
+        };
+      }
+
+      function withinDomain(eq, x) {
+        const min = eq.domainMin !== '' && Number.isFinite(Number(eq.domainMin)) ? Number(eq.domainMin) : -Infinity;
+        const max = eq.domainMax !== '' && Number.isFinite(Number(eq.domainMax)) ? Number(eq.domainMax) : Infinity;
+        return x >= min && x <= max;
+      }
+
+      function safeEvaluate(eq, x) {
+        if (!withinDomain(eq, x)) return NaN;
+        try {
+          const y = eq.evaluator(x);
+          return Number.isFinite(y) ? y : NaN;
+        } catch {
+          return NaN;
+        }
+      }
+
+      function approximateDerivative(eq, x) {
+        const h = Math.max(1e-4, 1 / state.view.scale * 0.85);
+        const x1 = x - h;
+        const x2 = x + h;
+        if (!withinDomain(eq, x1) || !withinDomain(eq, x2)) return NaN;
+        const y1 = safeEvaluate(eq, x1);
+        const y2 = safeEvaluate(eq, x2);
+        if (!Number.isFinite(y1) || !Number.isFinite(y2)) return NaN;
+        return (y2 - y1) / (2 * h);
+      }
+
+      function bisectRoot(eq, left, right) {
+        let a = left;
+        let b = right;
+        let fa = safeEvaluate(eq, a);
+        let fb = safeEvaluate(eq, b);
+        if (!Number.isFinite(fa) || !Number.isFinite(fb)) return null;
+        if (Math.abs(fa) < 1e-9) return { x: a, y: 0 };
+        if (Math.abs(fb) < 1e-9) return { x: b, y: 0 };
+        if (fa * fb > 0) return null;
+        for (let i = 0; i < 30; i++) {
+          const mid = (a + b) / 2;
+          const fm = safeEvaluate(eq, mid);
+          if (!Number.isFinite(fm)) return null;
+          if (Math.abs(fm) < 1e-8) return { x: mid, y: 0 };
+          if (fa * fm <= 0) {
+            b = mid;
+            fb = fm;
+          } else {
+            a = mid;
+            fa = fm;
+          }
+        }
+        return { x: (a + b) / 2, y: 0 };
+      }
+
+      function refineExtremum(eq, center, kind, left, right) {
+        let bestX = center;
+        let bestY = safeEvaluate(eq, center);
+        if (!Number.isFinite(bestY)) return null;
+        let radius = Math.max((right - left) * 0.04, 0.18);
+        for (let round = 0; round < 4; round++) {
+          const steps = 50;
+          for (let i = 0; i <= steps; i++) {
+            const x = clamp(center - radius + (2 * radius * i) / steps, left, right);
+            const y = safeEvaluate(eq, x);
+            if (!Number.isFinite(y)) continue;
+            if ((kind === 'max' && y > bestY) || (kind === 'min' && y < bestY)) {
+              bestX = x;
+              bestY = y;
+            }
+          }
+          center = bestX;
+          radius *= 0.35;
+        }
+        return { x: bestX, y: bestY };
+      }
+
+      function compileExpression(input) {
+        if (!input || !input.trim()) throw new Error('Please enter an equation before plotting.');
+        let expression = input.trim();
+        expression = expression.replace(/^\s*(?:y|f\s*\(\s*x\s*\))\s*=\s*/i, '');
+        expression = expression.replace(/[−–—]/g, '-').replace(/×/g, '*').replace(/÷/g, '/').replace(/π/gi, 'pi');
+        expression = normalizeAbsoluteValue(expression);
+
+        const rawTokens = tokenize(expression);
+        const tokens = insertImplicitMultiplication(rawTokens);
+        const rpn = toRPN(tokens);
+        const evaluator = (x) => evaluateRPN(rpn, x);
+
+        // smoke test a few points to catch obvious invalid stacks
+        [0, 1, -1, Math.PI / 2].forEach((sample) => { evaluator(sample); });
+
+        return {
+          normalized: expression.replace(/\s+/g, ' ').trim(),
+          compiledSource: tokens.map((t) => t.value ?? t.type).join(' '),
+          evaluator,
+        };
+      }
+
+      function normalizeAbsoluteValue(expression) {
+        let expr = expression;
+        let safety = 0;
+        while (expr.includes('|') && safety < 20) {
+          const next = expr.replace(/\|([^|]+)\|/g, 'abs($1)');
+          if (next === expr) break;
+          expr = next;
+          safety++;
+        }
+        if ((expr.match(/\|/g) || []).length % 2 !== 0) {
+          throw new Error('Absolute value bars are not balanced. Use abs(x) or matching | | pairs.');
+        }
+        return expr;
+      }
+
+      function tokenize(expression) {
+        const tokens = [];
+        let i = 0;
+        while (i < expression.length) {
+          const ch = expression[i];
+          if (/\s/.test(ch)) {
+            i++;
+            continue;
+          }
+          if (/[0-9.]/.test(ch)) {
+            let start = i;
+            let dots = 0;
+            while (i < expression.length && /[0-9.]/.test(expression[i])) {
+              if (expression[i] === '.') dots++;
+              i++;
+            }
+            if (dots > 1) throw new Error('A number contains too many decimal points.');
+            tokens.push({ type: 'number', value: expression.slice(start, i) });
+            continue;
+          }
+          if (/[a-zA-Z]/.test(ch)) {
+            let start = i;
+            while (i < expression.length && /[a-zA-Z]/.test(expression[i])) i++;
+            tokens.push({ type: 'ident', value: expression.slice(start, i).toLowerCase() });
+            continue;
+          }
+          if ('+-*/^(),'.includes(ch)) {
+            if (ch === '(') tokens.push({ type: 'lparen', value: ch });
+            else if (ch === ')') tokens.push({ type: 'rparen', value: ch });
+            else if (ch === ',') tokens.push({ type: 'comma', value: ch });
+            else tokens.push({ type: 'op', value: ch });
+            i++;
+            continue;
+          }
+          throw new Error(`Unsupported character “${ch}” in the expression.`);
+        }
+        return tokens;
+      }
+
+      function insertImplicitMultiplication(tokens) {
+        const result = [];
+        tokens.forEach((token, index) => {
+          const prev = result[result.length - 1];
+          if (prev && needsImplicitMultiplication(prev, token)) {
+            result.push({ type: 'op', value: '*' });
+          }
+          result.push(token);
+        });
+        return result;
+      }
+
+      function needsImplicitMultiplication(prev, current) {
+        const prevValue = prev.type === 'number' || prev.type === 'rparen' || (prev.type === 'ident' && !FUNCTION_NAMES.has(prev.value));
+        const currentValue = current.type === 'number' || current.type === 'lparen' || current.type === 'ident';
+        if (!(prevValue && currentValue)) return false;
+        if (prev.type === 'ident' && FUNCTION_NAMES.has(prev.value) && current.type === 'lparen') return false;
+        return true;
+      }
+
+      function toRPN(tokens) {
+        const output = [];
+        const stack = [];
+        let prev = null;
+
+        const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3, 'u-': 4 };
+        const rightAssociative = new Set(['^', 'u-']);
+
+        for (let i = 0; i < tokens.length; i++) {
+          const token = tokens[i];
+          if (token.type === 'number') {
+            output.push(token);
+            prev = token;
+            continue;
+          }
+
+          if (token.type === 'ident') {
+            if (FUNCTION_NAMES.has(token.value)) {
+              stack.push({ type: 'function', value: token.value });
+            } else if (token.value === 'x' || token.value === 'pi' || token.value === 'e') {
+              output.push(token);
+            } else {
+              throw new Error(`Unknown symbol “${token.value}”. Supported names include x, pi, e, sin, cos, tan, sqrt, log, ln, abs.`);
+            }
+            prev = token;
+            continue;
+          }
+
+          if (token.type === 'comma') {
+            while (stack.length && stack[stack.length - 1].type !== 'lparen') output.push(stack.pop());
+            if (!stack.length) throw new Error('Comma found outside function parentheses.');
+            prev = token;
+            continue;
+          }
+
+          if (token.type === 'op') {
+            let op = token.value;
+            const unary = !prev || ['op', 'lparen', 'comma'].includes(prev.type);
+            if ((op === '+' || op === '-') && unary) {
+              if (op === '+') {
+                prev = token;
+                continue;
+              }
+              op = 'u-';
+            }
+
+            while (stack.length) {
+              const top = stack[stack.length - 1];
+              if (top.type === 'function') {
+                output.push(stack.pop());
+                continue;
+              }
+              if (top.type !== 'op') break;
+              const shouldPop = rightAssociative.has(op)
+                ? precedence[op] < precedence[top.value]
+                : precedence[op] <= precedence[top.value];
+              if (!shouldPop) break;
+              output.push(stack.pop());
+            }
+            stack.push({ type: 'op', value: op });
+            prev = { type: 'op', value: op };
+            continue;
+          }
+
+          if (token.type === 'lparen') {
+            stack.push(token);
+            prev = token;
+            continue;
+          }
+
+          if (token.type === 'rparen') {
+            while (stack.length && stack[stack.length - 1].type !== 'lparen') output.push(stack.pop());
+            if (!stack.length) throw new Error('A closing parenthesis does not match any opening parenthesis.');
+            stack.pop();
+            if (stack.length && stack[stack.length - 1].type === 'function') output.push(stack.pop());
+            prev = token;
+          }
+        }
+
+        while (stack.length) {
+          const top = stack.pop();
+          if (top.type === 'lparen' || top.type === 'rparen') throw new Error('Parentheses are not balanced.');
+          output.push(top);
+        }
+        return output;
+      }
+
+      function evaluateRPN(rpn, xValue) {
+        const stack = [];
+        for (const token of rpn) {
+          if (token.type === 'number') {
+            stack.push(Number(token.value));
+            continue;
+          }
+          if (token.type === 'ident') {
+            if (token.value === 'x') stack.push(xValue);
+            else if (token.value === 'pi') stack.push(Math.PI);
+            else if (token.value === 'e') stack.push(Math.E);
+            continue;
+          }
+          if (token.type === 'op') {
+            if (token.value === 'u-') {
+              const a = stack.pop();
+              stack.push(-a);
+              continue;
+            }
+            const b = stack.pop();
+            const a = stack.pop();
+            if (!Number.isFinite(a) || !Number.isFinite(b)) return NaN;
+            if (token.value === '+') stack.push(a + b);
+            if (token.value === '-') stack.push(a - b);
+            if (token.value === '*') stack.push(a * b);
+            if (token.value === '/') stack.push(b === 0 ? NaN : a / b);
+            if (token.value === '^') stack.push(Math.pow(a, b));
+            continue;
+          }
+          if (token.type === 'function') {
+            const a = stack.pop();
+            if (!Number.isFinite(a)) return NaN;
+            let result = NaN;
+            if (token.value === 'sin') result = Math.sin(a);
+            if (token.value === 'cos') result = Math.cos(a);
+            if (token.value === 'tan') result = Math.tan(a);
+            if (token.value === 'asin') result = Math.asin(a);
+            if (token.value === 'acos') result = Math.acos(a);
+            if (token.value === 'atan') result = Math.atan(a);
+            if (token.value === 'sqrt') result = a < 0 ? NaN : Math.sqrt(a);
+            if (token.value === 'log') result = a <= 0 ? NaN : Math.log10(a);
+            if (token.value === 'ln') result = a <= 0 ? NaN : Math.log(a);
+            if (token.value === 'abs') result = Math.abs(a);
+            if (token.value === 'exp') result = Math.exp(a);
+            stack.push(Number.isFinite(result) ? result : NaN);
+          }
+        }
+        return stack.length === 1 ? stack[0] : NaN;
+      }
+
+      function exportPNG() {
+        try {
+          renderGraph();
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = elements.graphCanvas.width;
+          tempCanvas.height = elements.graphCanvas.height;
+          const tctx = tempCanvas.getContext('2d');
+          tctx.drawImage(elements.graphCanvas, 0, 0);
+
+          const serialized = new XMLSerializer().serializeToString(elements.graphOverlay);
+          const svgBlob = new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(svgBlob);
+          const image = new Image();
+          image.onload = () => {
+            tctx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
+            URL.revokeObjectURL(url);
+            const link = document.createElement('a');
+            link.download = 'math-graph-plotter.png';
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+            showStatus('PNG export created successfully.', 'success');
+          };
+          image.onerror = () => {
+            URL.revokeObjectURL(url);
+            const link = document.createElement('a');
+            link.download = 'math-graph-plotter.png';
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+            showStatus('PNG export created without overlay labels.', 'warning');
+          };
+          image.src = url;
+        } catch (error) {
+          showStatus(error.message || 'Unable to export the graph image.', 'error');
+        }
+      }
+
+      function showStatus(message, type = 'info') {
+        elements.statusPill.className = `status-pill ${type}`;
+        elements.statusPill.textContent = message;
+        elements.toast.className = `toast ${type} show`;
+        elements.toast.innerHTML = `<strong>${escapeHtml(type === 'error' ? 'Input check' : type === 'success' ? 'Done' : 'Notice')}</strong><span>${escapeHtml(message)}</span>`;
+        clearTimeout(state.toastTimer);
+        state.toastTimer = setTimeout(() => elements.toast.classList.remove('show'), 2600);
+      }
+
+      function formatAxisLabel(value) {
+        if (Math.abs(value) >= 1000 || Math.abs(value) < 0.01 && value !== 0) return value.toExponential(1).replace('+', '');
+        const rounded = Math.round(value * 1000) / 1000;
+        return Number.isInteger(rounded) ? String(rounded) : rounded.toString();
+      }
+
+      function formatNumber(value) {
+        if (!Number.isFinite(value)) return 'undefined';
+        const abs = Math.abs(value);
+        if (abs >= 10000 || (abs > 0 && abs < 0.0001)) return value.toExponential(2).replace('+', '');
+        const rounded = Math.round(value * 1000) / 1000;
+        return Number.isInteger(rounded) ? `${rounded}` : `${rounded}`;
+      }
+
+      function approximatelyMultiple(value, step) {
+        const ratio = value / step;
+        return Math.abs(ratio - Math.round(ratio)) < 1e-6;
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function hexToRgba(hex, alpha) {
+        if (!/^#?[\da-f]{6}$/i.test(hex)) return null;
+        const clean = hex.replace('#', '');
+        const r = parseInt(clean.slice(0, 2), 16);
+        const g = parseInt(clean.slice(2, 4), 16);
+        const b = parseInt(clean.slice(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function escapeAttribute(value) {
+        return escapeHtml(value).replace(/`/g, '&#96;');
+      }
+
+      syncToggleButtons();
+      init();
+    })();
+  </script>
+</body>
+</html>
